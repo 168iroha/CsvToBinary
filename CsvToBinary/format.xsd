@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <!-- //item/valueや//item/default-valueの@typeの設定値 -->
+  <xs:attributeGroup name="value-type-attr-group">
+    <!-- 値の種類 -->
+    <xs:attribute name="type">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <!-- 値の種類のリスト -->
+          <xs:enumeration value="xpath"/><!-- 文字列を//itemを基準とするXPathと解釈 -->
+          <xs:enumeration value="current-time"/><!-- 文字列をC#の時刻フォーマット -->
+          <xs:enumeration value="counter"/><!-- 文字列をカウンタの名称とした場合のカウンタ値 -->
+          <xs:enumeration value="auto-increment"/><!-- 文字列を現在のカウンタ値として自動的にインクリメントする -->
+          <xs:enumeration value="external"/><!-- 文字列の名称の外部から与えた固定値を設定 -->
+          <!-- 上記以外の場合あるいは設定されなかった場合はそのままの値を設定 -->
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!-- 出力の基本要素 -->
+  <xs:group name="basic-item-group">
+    <xs:choice>
+      <!-- 外部のXMLを読み込む -->
+      <xs:element name="import">
+        <xs:complexType>
+          <xs:sequence>
+            <!-- 外部のXMLの読み込み時の変換規則 -->
+            <xs:element name="map" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <!-- 外部のXMLについての変換元のXPath -->
+                    <xs:attribute name="from" use="required" />
+                    <!-- 変換に用いる値の取得方法の定義 -->
+                    <xs:attribute name="type">
+                      <xs:simpleType>
+                        <xs:restriction base="xs:string">
+                          <!-- 読み込み方法リスト -->
+                          <xs:enumeration value="text"/><!-- //import/mapのテキストそのままを設定 -->
+                          <xs:enumeration value="external"/><!-- //import/mapのテキストの名称の外部から与えた固定値を設定 -->
+                          <!-- 特に指定がない場合は//import/@transformで指定したXMLの要素を指すXPathが//import/mapのテキストに設定されているものとする -->
+                        </xs:restriction>
+                      </xs:simpleType>
+                    </xs:attribute>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+          <!-- 読み込み対象-->
+          <xs:attribute name="target" />
+          <!-- //items/@nameと等価 -->
+          <xs:attribute name="name" />
+          <!-- 読み込み対象のXMLの変換に用いるXMLの指定(主に設定ファイルを想定) -->
+          <xs:attribute name="transform" />
+          <!-- 読み込み方法-->
+          <xs:attribute name="type">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <!-- 読み込み方法リスト -->
+                <xs:enumeration value="xml"/><!-- 静的に指定されたXMLを結合する -->
+                <xs:enumeration value="dynamic"/><!-- 動的に指定されたXMLを結合する -->
+                <xs:enumeration value="combined"/><!-- 現在対象となっている結合されたXMLへ制御を移す -->
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+
+      <!-- 出力対象の要素 -->
+      <xs:element name="item">
+        <xs:complexType>
+          <xs:sequence>
+            <!-- 出力対象にディスパッチされた値 -->
+            <xs:element name="value" minOccurs="0">
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <!-- 値の種類 -->
+                    <xs:attributeGroup ref="value-type-attr-group"/>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+            <!-- 出力対象にディスパッチされなかった場合に代わりに//item/valueとして用いられるデフォルト値 -->
+            <xs:element name="default-value" minOccurs="0">
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <!-- 値の種類 -->
+                    <xs:attributeGroup ref="value-type-attr-group"/>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+            <!-- valueやdefault-valueの連鎖的な変換を行う -->
+            <xs:element name="transform" minOccurs="0" maxOccurs="unbounded" type="xs:string"></xs:element>
+          </xs:sequence>
+
+          <!-- 文字列としての出力結果(XPathでの検索のために利用) -->
+          <xs:attribute name="result" type="xs:string" />
+          <!-- 出力結果のバイト数(XPathでの検索のために利用) -->
+          <xs:attribute name="result-bytes">
+            <xs:simpleType>
+              <!-- 32ビットの範囲に制限される -->
+              <xs:restriction base="xs:integer">
+                <xs:minInclusive value="0"/>
+                <xs:maxInclusive value="2147483647"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+
+          <!-- 出力対象の名称 -->
+          <xs:attribute name="name" type="xs:string" use="required" />
+          <!-- 出力対象のバイト数 -->
+          <xs:attribute name="bytes">
+            <xs:simpleType>
+              <!-- 32ビットの範囲に制限される -->
+              <xs:restriction base="xs:integer">
+                <xs:minInclusive value="0"/>
+                <xs:maxInclusive value="2147483647"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <!-- 出力対象のXPathにより算出されるバイト数(//itemを基準とする) -->
+          <xs:attribute name="xbytes" type="xs:string" />
+          <!-- byteやxbyteが指定されたときに終端まで埋める文字 -->
+          <xs:attribute name="padding" type="xs:string" />
+          <xs:attribute name="lpadding" type="xs:string" />
+          <xs:attribute name="rpadding" type="xs:string" />
+          <!-- 出力先のオフセット(item[@type='xpath'][@eval='lazy']のときは自動的に設定される) -->
+          <xs:attribute name="offset">
+            <xs:simpleType>
+              <!-- 64ビットの範囲に制限される -->
+              <xs:restriction base="xs:integer">
+                <xs:minInclusive value="0"/>
+                <xs:maxInclusive value="9223372036854775807"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <!-- 文字列要素の出力の際の符号化方式 -->
+          <xs:attribute name="encoding">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <!-- 許容する符号化方式のリスト -->
+                <xs:enumeration value="binary"/><!-- 文字列を2進数文字列と解釈 -->
+                <xs:enumeration value="hexadecimal"/><!-- 文字列を16進数文字列と解釈 -->
+                <xs:enumeration value="decimal"/><!-- 文字列を10進数文字列と解釈 -->
+                <xs:enumeration value="utf-8"/><!-- 文字列をUTF-8と解釈 -->
+                <xs:enumeration value="utf-16"/><!-- 文字列をUTF-16LEと解釈 -->
+                <xs:enumeration value="shift-jis"/><!-- 文字列をShift-JISと解釈 -->
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <!-- 評価方法 -->
+          <xs:attribute name="eval">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <!-- 許容する評価方法リスト -->
+                <xs:enumeration value="lazy"/><!-- 遅延評価を行う -->
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+
+        </xs:complexType>
+      </xs:element>
+    </xs:choice>
+  </xs:group>
+  <!-- 繰り返し要素 -->
+  <xs:group name="repeat-group">
+    <xs:choice>
+      <xs:element name="repeat">
+        <xs:complexType>
+          <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <!-- 出力の基本要素に関するグループ要素 -->
+            <xs:group ref="basic-items-group"/>
+            <!-- 繰り返し要素(再帰) -->
+            <xs:group ref="repeat-group"/>
+          </xs:choice>
+
+          <!-- 繰り返し方法 -->
+          <xs:attribute name="type">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <!-- 繰り返し方法リスト -->
+                <xs:enumeration value="combined-xml"/><!-- 結合されるXMLについての繰り返し -->
+                <xs:enumeration value="combined-record"/><!-- 結合対象の1つのファイルのレコードについての繰り返し -->
+                <xs:enumeration value=""/><!-- 単純な繰り返し(maxもしくはxmaxの指定が必須) -->
+                <!-- //repeat/@typeの指定がないときは@type=''の場合と同一 -->
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <!-- 繰り返し回数 -->
+          <xs:attribute name="max">
+            <xs:simpleType>
+              <!-- 32ビットの範囲に制限される -->
+              <xs:restriction base="xs:integer">
+                <xs:minInclusive value="0"/>
+                <xs:maxInclusive value="2147483647"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <!-- 出力対象のXPathにより算出される繰り返し回数(//repeatを基準とする) -->
+          <xs:attribute name="xmax" type="xs:string" />
+          <!-- 繰り返しの際にループ展開を行うか(XPathによる集計やメモリ使用量で影響) -->
+          <xs:attribute name="unrolling" type="xs:boolean" />
+          <!-- 繰り返しの際にレコードのフェッチを行うか -->
+          <xs:attribute name="fetch" type="xs:boolean" />
+        </xs:complexType>
+      </xs:element>
+    </xs:choice>
+  </xs:group>
+  <!-- 変換結果の書き込み先の指定をする要素 -->
+  <xs:group name="writer-group">
+    <xs:choice>
+      <xs:element name="writer">
+        <xs:complexType>
+          <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <!-- 変換結果の書き込み先の指定をする要素に関するグループ要素 -->
+            <xs:group ref="writer-items-group"/>
+          </xs:choice>
+          
+          <!-- 書き込み先の型-->
+          <xs:attribute name="type" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <!-- 書き込み先リスト -->
+                <xs:enumeration value="binary-file"/><!-- バイナリファイル -->
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+    </xs:choice>
+  </xs:group>
+  <!-- 変換結果の書き込み先の指定をする要素に関するグループ要素 -->
+  <xs:group name="writer-items-group">
+    <xs:choice>
+      <!-- //itemなどをグループ化して扱うための要素の定義 -->
+      <xs:element name="items">
+        <xs:complexType>
+          <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <!-- 変換結果の書き込み先の指定をする要素に関するグループ要素(再帰) -->
+            <xs:group ref="writer-items-group"/>
+          </xs:choice>
+          <!-- グループ名 -->
+          <xs:attribute name="name" type="xs:string" />
+        </xs:complexType>
+      </xs:element>
+      <!-- 出力の基本要素 -->
+      <xs:group ref="basic-item-group"/>
+    </xs:choice>
+  </xs:group>
+  <!-- 出力の基本要素に関するグループ要素 -->
+  <xs:group name="basic-items-group">
+    <xs:choice>
+      <!-- //itemなどをグループ化して扱うための要素の定義 -->
+      <xs:element name="items">
+        <xs:complexType>
+          <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <!-- 出力の基本要素に関するグループ要素(再帰) -->
+            <xs:group ref="basic-items-group"/>
+          </xs:choice>
+          <!-- グループ名 -->
+          <xs:attribute name="name" type="xs:string" />
+        </xs:complexType>
+      </xs:element>
+      <!-- 出力の基本要素 -->
+      <xs:group ref="basic-item-group"/>
+      <!-- 繰り返し要素 -->
+      <xs:group ref="repeat-group"/>
+      <!-- 書き込み先要素 -->
+      <xs:group ref="writer-group"/>
+    </xs:choice>
+  </xs:group>
+
+  <!-- ルート要素 -->
+  <xs:element name="format">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:group ref="basic-items-group"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
