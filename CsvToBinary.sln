@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CsvToBinary", "CsvToBinary\CsvToBinary.csproj", "{9F90B842-795F-4B07-9162-CBA9CBAB6308}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tests", "tests\tests.csproj", "{CBF9C24B-C727-4E74-9CF7-F32311A87047}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9F90B842-795F-4B07-9162-CBA9CBAB6308} = {9F90B842-795F-4B07-9162-CBA9CBAB6308}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
