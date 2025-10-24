@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 
-namespace Data
+namespace CsvToBinary.Data
 {
     /// <summary>
     /// データの書き込みに関するインターフェース

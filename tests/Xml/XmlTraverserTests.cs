@@ -1,9 +1,8 @@
-﻿using CsvHelper;
-using Data;
+﻿using CsvToBinary.Data;
 using System.Text;
 using System.Xml.Linq;
-using Xml;
-using StringWriter = Data.StringWriter;
+using CsvToBinary.Xml;
+using StringWriter = CsvToBinary.Data.StringWriter;
 
 namespace tests.Xml
 {
@@ -202,7 +201,8 @@ namespace tests.Xml
     /// <summary>
     /// IDataReaderについてのスタブ
     /// </summary>
-    public class StubDataWriter : IDataWriter
+    /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
+    public class StubDataWriter(IXmlToBinary xmlToBinary) : IDataWriter
     {
         /// <summary>
         /// 現在書き込んでいる行に関するスタック
@@ -227,21 +227,12 @@ namespace tests.Xml
         /// <summary>
         /// XMLをStreamへ書き出す処理が記載されたインスタンス
         /// </summary>
-        private readonly IXmlToBinary xmlToBinary;
+        private readonly IXmlToBinary xmlToBinary = xmlToBinary;
 
         /// <summary>
         /// pushやpopにおけるネストの深さ
         /// </summary>
         private int nestLevel = 0;
-
-        /// <summary>
-        /// コンストラクタ
-        /// </summary>
-        /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
-        public StubDataWriter(IXmlToBinary xmlToBinary)
-        {
-            this.xmlToBinary = xmlToBinary;
-        }
 
         public void SetData(string key, XElement item)
         {
@@ -299,7 +290,7 @@ namespace tests.Xml
         {
             if (this.stack.TryPeek(out List<string>? peek))
             {
-                List<List<string>> targetArray = [];
+                List<List<string>> targetArray;
                 if (this.nestLevel > 1)
                 {
                     // ネストの深さが深いときは一時的なデータ列へ書き込み
@@ -364,7 +355,9 @@ namespace tests.Xml
             return -1;
         }
 
-        public void Dispose() { }
+        public void Dispose() {
+            GC.SuppressFinalize(this);
+        }
 
         public List<List<string>> DataArray => dataArray;
     }
@@ -417,14 +410,14 @@ namespace tests.Xml
             var xmlTraverser = new XmlTraverser(
                 new StubXPathResolver(),
                 xmlToBinary,
-                (string path) => new XDocument(),
-                (string type, string name, IXmlToBinary xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
                 []
             );
 
             using var writer = new StubDataWriter(xmlToBinary);
 
-            xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
+            _ = xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer, 0, 0, true));
             // readerにより設定されない値の比較
@@ -501,14 +494,14 @@ namespace tests.Xml
             var xmlTraverser = new XmlTraverser(
                 new StubXPathResolver(),
                 xmlToBinary,
-                (string path) => new XDocument(),
-                (string type, string name, IXmlToBinary xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
                 []
             );
 
             using var writer = new StubDataWriter(xmlToBinary);
 
-            xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
+            _ = xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer));
         }
@@ -566,14 +559,14 @@ namespace tests.Xml
             var xmlTraverser = new XmlTraverser(
                 new StubXPathResolver(),
                 xmlToBinary,
-                (string path) => new XDocument(),
-                (string type, string name, IXmlToBinary xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
                 []
             );
 
             var writer = new StubDataWriter(xmlToBinary);
 
-            xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
+            _ = xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer));
         }
@@ -650,14 +643,14 @@ namespace tests.Xml
             var xmlTraverser = new XmlTraverser(
                 new StubXPathResolver(),
                 xmlToBinary,
-                (string path) => new XDocument(),
-                (string type, string name, IXmlToBinary xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
                 []
             );
 
             using var writer = new StubDataWriter(xmlToBinary);
 
-            xmlTraverser.Traversal(writer, (reader1, xmlTree), [(reader2, new XDocument()), (reader3, new XDocument()), (reader4, new XDocument())]).ToArray();
+            _ = xmlTraverser.Traversal(writer, (reader1, xmlTree), [(reader2, new XDocument()), (reader3, new XDocument()), (reader4, new XDocument())]).ToArray();
             // readerにより設定される値の比較
             Assert.IsTrue(reader1.Included(writer, 0, 1));
             Assert.IsTrue(reader2.Included(writer, 0, 3));
@@ -721,14 +714,14 @@ namespace tests.Xml
             var xmlTraverser = new XmlTraverser(
                 new StubXPathResolver(),
                 xmlToBinary,
-                (string path) => new XDocument(),
-                (string type, string name, IXmlToBinary xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
                 []
             );
 
             using var writer = new StubDataWriter(xmlToBinary);
 
-            xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
+            _ = xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
             // readerにより設定される値の比較
             for (int i = 0; i < maxCount; ++i)
             {
@@ -805,14 +798,14 @@ namespace tests.Xml
             var xmlTraverser = new XmlTraverser(
                 new StubXPathResolver(),
                 xmlToBinary,
-                (string path) => new XDocument(),
-                (string type, string name, IXmlToBinary xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
                 []
             );
 
             using var writer = new StubDataWriter(xmlToBinary);
 
-            xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
+            _ = xmlTraverser.Traversal(writer, (reader, xmlTree), []).ToArray();
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer));
             for (int i = 0; i < reader.RowCount; ++i)

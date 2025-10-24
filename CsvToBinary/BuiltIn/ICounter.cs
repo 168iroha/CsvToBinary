@@ -1,4 +1,4 @@
-﻿namespace BuiltIn
+﻿namespace CsvToBinary.BuiltIn
 {
     /// <summary>
     /// 連番を与えるためのインターフェース

@@ -1,9 +1,10 @@
-﻿namespace BuiltIn
+﻿namespace CsvToBinary.BuiltIn
 {
     /// <summary>
     /// 複数のパターンの文字列の変換の管理のためのクラス
     /// </summary>
-    public class TransformerControl : ITransformerControl
+    /// <param name="transformerFunc">ファイルを読み込むためのデリゲート</param>
+    public class TransformerControl(Func<string, ITransformer> transformerFunc) : ITransformerControl
     {
         /// <summary>
         /// 変換器に関するマップ
@@ -13,16 +14,7 @@
         /// <summary>
         /// 変換器を読み込むための関数
         /// </summary>
-        private readonly Func<string, ITransformer> transformerFunc;
-
-        /// <summary>
-        /// コンストラクタ
-        /// </summary>
-        /// <param name="transformerFunc">ファイルを読み込むためのデリゲート</param>
-        public TransformerControl(Func<string, ITransformer> transformerFunc)
-        {
-            this.transformerFunc = transformerFunc;
-        }
+        private readonly Func<string, ITransformer> transformerFunc = transformerFunc;
 
         /// <summary>
         /// 文字列を変換をするための変換器の取得

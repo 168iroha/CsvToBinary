@@ -1,4 +1,4 @@
-using Data;
+using CsvToBinary.Data;
 
 namespace tests.Data
 {

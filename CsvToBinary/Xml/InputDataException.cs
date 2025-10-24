@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 
-namespace Xml
+namespace CsvToBinary.Xml
 {
     /// <summary>
     /// 入力データに関する例外クラス

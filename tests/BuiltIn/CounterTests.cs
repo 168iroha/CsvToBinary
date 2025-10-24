@@ -1,8 +1,8 @@
-using BuiltIn;
+using CsvToBinary.BuiltIn;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
-namespace tests.BultIn
+namespace tests.BuiltIn
 {
     [TestClass]
     public class CounterTests

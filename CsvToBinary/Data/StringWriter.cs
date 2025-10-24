@@ -1,40 +1,30 @@
 ﻿using System.Text;
 using System.Xml.Linq;
-using Xml;
+using CsvToBinary.Xml;
 
-namespace Data
+namespace CsvToBinary.Data
 {
     /// <summary>
     /// 文字列データの書き込みに関するクラス
     /// </summary>
-    public class StringWriter : IDataWriter
+    /// <param name="stream">書き込み先のStream</param>
+    /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
+    public class StringWriter(Stream stream, IXmlToBinary xmlToBinary) : IDataWriter
     {
         /// <summary>
         /// 書き込み先のStream
         /// </summary>
-        private readonly Stream stream;
+        private readonly Stream stream = stream;
 
         /// <summary>
         /// ファイルIO制御のためのMutex
         /// </summary>
-        private readonly Mutex mutex;
+        private readonly Mutex mutex = new(false);
 
         /// <summary>
         /// XMLをStreamへ書き出す処理が記載されたインスタンス
         /// </summary>
-        private readonly IXmlToBinary xmlToBinary;
-
-        /// <summary>
-        /// コンストラクタ
-        /// </summary>
-        /// <param name="stream">書き込み先のStream</param>
-        /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
-        public StringWriter(Stream stream, IXmlToBinary xmlToBinary)
-        {
-            this.mutex = new Mutex(false);
-            this.stream = stream;
-            this.xmlToBinary = xmlToBinary;
-        }
+        private readonly IXmlToBinary xmlToBinary = xmlToBinary;
 
         /// <summary>
         /// 処理単位のデータを書き込む
@@ -104,6 +94,7 @@ namespace Data
         {
             this.stream.Dispose();
             this.mutex.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

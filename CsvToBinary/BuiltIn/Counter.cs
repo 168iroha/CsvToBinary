@@ -1,7 +1,7 @@
 ﻿using System.Xml.Linq;
 using System.Xml.XPath;
 
-namespace BuiltIn
+namespace CsvToBinary.BuiltIn
 {
     /// <summary>
     /// Streamを介して連番を与えるためのクラス
@@ -145,6 +145,7 @@ namespace BuiltIn
             this.doc.Save(this.stream);
             // streamは書き込み先でもあるため勝手にはクローズしないようにする
             //this.stream.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

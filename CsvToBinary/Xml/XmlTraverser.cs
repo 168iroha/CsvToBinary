@@ -1,38 +1,34 @@
-﻿using Data;
-using System.Xml;
+﻿using CsvToBinary.Data;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
-namespace Xml
+namespace CsvToBinary.Xml
 {
 
     /// <summary>
     /// XMLを走査してStreamへデータを出力するクラス
     /// </summary>
-    public class XmlTraverser
+    /// <param name="xPathResolver">XPathの解決のためのインスタンス</param>
+    /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
+    /// <param name="xmlFunc">外部XMLを読み込むための関数</param>
+    /// <param name="writerFunc">外部XMLを読み込むための関数</param>
+    /// <param name="externalDic">変換時に外部から与えるパラメータ</param>
+    public class XmlTraverser(IXPathResolver xPathResolver, IXmlToBinary xmlToBinary, Func<string, XDocument> xmlFunc, Func<string, string, IXmlToBinary, IDataWriter> writerFunc, Dictionary<string, string> externalDic)
     {
         /// <summary>
         /// 結合するために用いるXMLのためのクラス
         /// </summary>
-        private class CombinedXml
+        /// <param name="combined">逐次結合されるXML</param>
+        private class CombinedXml(List<(IDataReader?, XDocument)> combined)
         {
             /// <summary>
             /// 逐次結合されるXML
             /// </summary>
-            private readonly List<(IDataReader?, XDocument)> combined;
+            private readonly List<(IDataReader?, XDocument)> combined = combined;
             /// <summary>
             /// 現在参照しているcombined
             /// </summary>
             public int? CurrentComblinedIndex { get; private set; }
-
-            /// <summary>
-            /// コンストラクタ
-            /// </summary>
-            /// <param name="combined">逐次結合されるXML</param>
-            public CombinedXml(List<(IDataReader?, XDocument)> combined)
-            {
-                this.combined = combined;
-            }
 
             /// <summary>
             /// 現在参照している結合されるXMLの取得
@@ -245,31 +241,22 @@ namespace Xml
         /// <summary>
         /// 結合されるXMLのためのrepeatの実装
         /// </summary>
-        private class RepeatCombinedXml : ARepeat
+        /// <param name="inst">親クラス</param>
+        /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+        /// <param name="element">ループの起点のrepeat要素</param>
+        /// <param name="key">elementの位置を示すキー</param>
+        /// <param name="combinedXml">結合するために用いるXML</param>
+        private class RepeatCombinedXml(XmlTraverser inst, Stack<(string, XElement)> scanStack, XElement element, string key, XmlTraverser.CombinedXml combinedXml) : ARepeat(inst, scanStack, element, key, true)
         {
             /// <summary>
             /// 結合するために用いるXML
             /// </summary>
-            private readonly CombinedXml combinedXml;
+            private readonly CombinedXml combinedXml = combinedXml;
 
             /// <summary>
             /// ループに関する前回の参照点
             /// </summary>
-            private int? prevReference;
-
-            /// <summary>
-            /// コンストラクタ
-            /// </summary>
-            /// <param name="inst">親クラス</param>
-            /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
-            /// <param name="element">ループの起点のrepeat要素</param>
-            /// <param name="key">elementの位置を示すキー</param>
-            /// <param name="combinedXml">結合するために用いるXML</param>
-            public RepeatCombinedXml(XmlTraverser inst, Stack<(string, XElement)> scanStack, XElement element, string key, CombinedXml combinedXml) : base(inst, scanStack, element, key, true)
-            {
-                this.combinedXml = combinedXml;
-                this.prevReference = combinedXml.CurrentComblinedIndex;
-            }
+            private int? prevReference = combinedXml.CurrentComblinedIndex;
 
             /// <summary>
             /// 次のループの開始を試みる
@@ -312,31 +299,22 @@ namespace Xml
         /// <summary>
         /// 結合対象の1つのファイルのレコードの読み込みのためのrepeatの実装
         /// </summary>
-        private class RepeatCombinedRecord : ARepeat
+        /// <param name="inst">親クラス</param>
+        /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+        /// <param name="element">ループの起点のrepeat要素</param>
+        /// <param name="key">elementの位置を示すキー</param>
+        /// <param name="combinedXml">結合するために用いるXML</param>
+        private class RepeatCombinedRecord(XmlTraverser inst, Stack<(string, XElement)> scanStack, XElement element, string key, XmlTraverser.CombinedXml combinedXml) : ARepeat(inst, scanStack, element, key, true)
         {
             /// <summary>
             /// 結合するために用いるXML
             /// </summary>
-            private readonly CombinedXml combinedXml;
+            private readonly CombinedXml combinedXml = combinedXml;
 
             /// <summary>
             /// ループに関する前回の参照点
             /// </summary>
-            private int? prevReference;
-
-            /// <summary>
-            /// コンストラクタ
-            /// </summary>
-            /// <param name="inst">親クラス</param>
-            /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
-            /// <param name="element">ループの起点のrepeat要素</param>
-            /// <param name="key">elementの位置を示すキー</param>
-            /// <param name="combinedXml">結合するために用いるXML</param>
-            public RepeatCombinedRecord(XmlTraverser inst, Stack<(string, XElement)> scanStack, XElement element, string key, CombinedXml combinedXml) : base(inst, scanStack, element, key, true)
-            {
-                this.combinedXml = combinedXml;
-                this.prevReference = combinedXml.CurrentComblinedIndex;
-            }
+            private int? prevReference = combinedXml.CurrentComblinedIndex;
 
             /// <summary>
             /// 次のループの開始を試みる
@@ -452,12 +430,12 @@ namespace Xml
         /// <summary>
         /// XPathの解決のためのインスタンス
         /// </summary>
-        private readonly IXPathResolver xPathResolver;
+        private readonly IXPathResolver xPathResolver = xPathResolver;
 
         /// <summary>
         /// XMLをStreamへ書き出す処理が記載されたインスタンス
         /// </summary>
-        private readonly IXmlToBinary xmlToBinary;
+        private readonly IXmlToBinary xmlToBinary = xmlToBinary;
 
         /// <summary>
         /// 外部XMLに関するマップ
@@ -467,34 +445,17 @@ namespace Xml
         /// <summary>
         /// 外部XMLを読み込むための関数
         /// </summary>
-        private readonly Func<string, XDocument> xmlFunc;
+        private readonly Func<string, XDocument> xmlFunc = xmlFunc;
 
         /// <summary>
         /// 書き込み先を得るための関数
         /// </summary>
-        private readonly Func<string, string, IXmlToBinary, IDataWriter> writerFunc;
+        private readonly Func<string, string, IXmlToBinary, IDataWriter> writerFunc = writerFunc;
 
         /// <summary>
         /// 変換時に外部から与えるパラメータ
         /// </summary>
-        private readonly Dictionary<string, string> externalDic;
-
-        /// <summary>
-        /// コンストラクタ
-        /// </summary>
-        /// <param name="xPathResolver">XPathの解決のためのインスタンス</param>
-        /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
-        /// <param name="xmlFunc">外部XMLを読み込むための関数</param>
-        /// <param name="writerFunc">外部XMLを読み込むための関数</param>
-        /// <param name="externalDic">変換時に外部から与えるパラメータ</param>
-        public XmlTraverser(IXPathResolver xPathResolver, IXmlToBinary xmlToBinary, Func<string, XDocument> xmlFunc, Func<string, string, IXmlToBinary, IDataWriter> writerFunc, Dictionary<string, string> externalDic)
-        {
-            this.xPathResolver = xPathResolver;
-            this.xmlToBinary = xmlToBinary;
-            this.xmlFunc = xmlFunc;
-            this.writerFunc = writerFunc;
-            this.externalDic = externalDic;
-        }
+        private readonly Dictionary<string, string> externalDic = externalDic;
 
         /// <summary>
         /// 何もしないことを示すノードの取得
@@ -658,7 +619,7 @@ namespace Xml
         /// <param name="key">elementの位置を示すキー</param>
         /// <param name="element">解析対象の要素</param>
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
-        private void TraversalItemNode(IDataWriter? writer, IDataReader? reader, string key, XElement element, CombinedXml combinedXml)
+        private static void TraversalItemNode(IDataWriter? writer, IDataReader? reader, string key, XElement element, CombinedXml combinedXml)
         {
             var elementKey = GetElementKey(key, element);
             var type = element.Attribute("type")?.Value;
@@ -697,7 +658,7 @@ namespace Xml
         /// <param name="key">elementの位置を示すキー</param>
         /// <param name="element">解析対象の要素</param>
         /// <param name="scanStack">探索のための</param>
-        private void TraversalItemsNode(string key, XElement element, Stack<(string, XElement)> scanStack)
+        private static void TraversalItemsNode(string key, XElement element, Stack<(string, XElement)> scanStack)
         {
             var elementKey = GetElementKey(key, element);
 
@@ -735,7 +696,7 @@ namespace Xml
 
             // stringWriterへelementの内容を出力する
             using var stringWriter = new Data.StringWriter(new MemoryStream(), this.xmlToBinary);
-            this.Traversal(stringWriter, (reader, element), combinedXml, key);
+            Traversal(stringWriter, (reader, element), combinedXml, key);
 
             // 書き込み先IDataWriterの選択
             writer = this.writerFunc(type, stringWriter.GetString(), this.xmlToBinary);
@@ -769,7 +730,7 @@ namespace Xml
                     {
                         // XMLのimportの解決は実施しない
                         this.EditXml(element, targetDoc);
-                        this.TraversalItemsNode(key, root, scanStack);
+                        TraversalItemsNode(key, root, scanStack);
                     }
                     break;
                 case "none":
@@ -865,10 +826,10 @@ namespace Xml
                         switch (sibling.Name.LocalName)
                         {
                             case "item":
-                                this.TraversalItemNode(writer, reader, key, sibling, combinedXml);
+                                TraversalItemNode(writer, reader, key, sibling, combinedXml);
                                 break;
                             case "items":
-                                this.TraversalItemsNode(key, sibling, scanStack);
+                                TraversalItemsNode(key, sibling, scanStack);
                                 break;
                             case "writer":
                                 if (writer is not null)
@@ -954,7 +915,7 @@ namespace Xml
                     // 書き込み終了の通知
                     writer.WriteChunk();
                     writer.Pop();
-                    --depth;
+                    // --depth;
                     yield return writer;
                 }
             }
@@ -967,7 +928,7 @@ namespace Xml
         /// <param name="writer">書き込み先</param>
         /// <param name="entry">トラバーサルのエントリポイントとなるXML(readerによるデータ読み込みは行われずカレントの読み込みのみが有効)</param>
         /// <param name="globalKey">entryの位置を示すキー</param>
-        private void Traversal(IDataWriter writer, (IDataReader?, XElement) entry, CombinedXml combinedXml, string globalKey)
+        private static void Traversal(Data.StringWriter writer, (IDataReader?, XElement) entry, CombinedXml combinedXml, string globalKey)
         {
             var reader = entry.Item1;
 
@@ -985,10 +946,10 @@ namespace Xml
                     switch (sibling.Name.LocalName)
                     {
                         case "item":
-                            this.TraversalItemNode(writer, reader, key, sibling, combinedXml);
+                            TraversalItemNode(writer, reader, key, sibling, combinedXml);
                             break;
                         case "items":
-                            this.TraversalItemsNode(key, sibling, scanStack);
+                            TraversalItemsNode(key, sibling, scanStack);
                             break;
                         // 必要になったらサポートする
                         //case "repeat":

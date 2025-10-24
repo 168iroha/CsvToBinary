@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 
-namespace Xml
+namespace CsvToBinary.Xml
 {
     /// <summary>
     /// XMLのトラバーサル時の論理的なエラーに関する例外クラス

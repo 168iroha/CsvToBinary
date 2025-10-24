@@ -1,7 +1,7 @@
 using System.Text;
 using System.Xml.Linq;
 using tests.Xml;
-using BinaryWriter = Data.BinaryWriter;
+using BinaryWriter = CsvToBinary.Data.BinaryWriter;
 
 namespace tests.Data
 {
@@ -78,10 +78,10 @@ namespace tests.Data
             ];
             // 書き込みの検査
             CollectionAssert.AreEqual(
-                WriteSimulate(elementList.Select(x => new XElement(x)).ToList(), [
+                WriteSimulate([.. elementList.Select(x => new XElement(x))], [
                     COM_PUSH, 0, 1, COM_WRITE_CHUNK, COM_POP
                 ]),
-                WriteSimulate(elementList.Select(x => new XElement(x)).ToList(), [
+                WriteSimulate([.. elementList.Select(x => new XElement(x))], [
                     COM_PUSH, 0, 1, 0, COM_POP
                 ])
             );
@@ -98,10 +98,10 @@ namespace tests.Data
             ];
             // 書き込みの検査
             CollectionAssert.AreEqual(
-                WriteSimulate(elementList.Select(x => new XElement(x)).ToList(), [
+                WriteSimulate([.. elementList.Select(x => new XElement(x))], [
                     COM_PUSH, 0, 1, 2, COM_WRITE_CHUNK, COM_POP
                 ]),
-                WriteSimulate(elementList.Select(x => new XElement(x)).ToList(), [
+                WriteSimulate([.. elementList.Select(x => new XElement(x))], [
                     COM_PUSH, 0, 1, 2, 2, 1, 0, COM_POP
                 ])
             );
@@ -120,10 +120,10 @@ namespace tests.Data
             ];
             // 書き込みの検査
             CollectionAssert.AreEqual(
-                WriteSimulate(elementList.Select(x => new XElement(x)).ToList(), [
+                WriteSimulate([.. elementList.Select(x => new XElement(x))], [
                     COM_PUSH, 0, COM_PUSH, 1, COM_PUSH, 2, COM_WRITE_CHUNK, COM_POP, 3, COM_WRITE_CHUNK, COM_POP, 4, COM_WRITE_CHUNK, COM_POP
                 ]),
-                WriteSimulate(elementList.Select(x => new XElement(x)).ToList(), [
+                WriteSimulate([.. elementList.Select(x => new XElement(x))], [
                     COM_PUSH, 0, 1, 2, 2, 3, 3, 1, 4, 4, 0, COM_POP
                 ])
             );

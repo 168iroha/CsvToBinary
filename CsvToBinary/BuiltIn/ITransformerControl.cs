@@ -1,4 +1,4 @@
-﻿namespace BuiltIn
+﻿namespace CsvToBinary.BuiltIn
 {
     /// <summary>
     /// 複数のパターンの文字列の変換の管理のためのインターフェース

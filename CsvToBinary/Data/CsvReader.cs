@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Xml.Linq;
 
-namespace Data
+namespace CsvToBinary.Data
 {
     /// <summary>
     /// CSVファイルの読み込みを行うクラス
@@ -161,6 +161,7 @@ namespace Data
         public void Dispose()
         {
             this.parser.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

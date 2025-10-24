@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 using System.Xml.XPath;
-using Xml;
+using CsvToBinary.Xml;
 
 namespace tests.Xml
 {
@@ -161,7 +161,7 @@ namespace tests.Xml
                 foreach (var item in xPathResolver.XPathSelectElements(xmlTree, xpath1))
                 {
                     Assert.AreEqual(item.Name, "item");
-                    Assert.AreEqual(item.Attribute("id").Value, $"{j}");
+                    Assert.AreEqual(item.Attribute("id")?.Value ?? "", $"{j}");
                     Assert.AreEqual(item.Value, $"text{j}");
                     ++j;
                 }
@@ -191,7 +191,7 @@ namespace tests.Xml
 
             try
             {
-                xPathResolver.XPathSelectElements(xmlTree, xpath).ToArray();
+                _ = xPathResolver.XPathSelectElements(xmlTree, xpath).ToArray();
                 Assert.Fail();
             }
             catch (XPathException) { }
@@ -213,7 +213,7 @@ namespace tests.Xml
 
             try
             {
-                xPathResolver.XPathSelectElements(xmlTree, xpath).ToArray();
+                _ = xPathResolver.XPathSelectElements(xmlTree, xpath).ToArray();
                 Assert.Fail();
             }
             catch (InvalidOperationException) { }
@@ -246,13 +246,13 @@ namespace tests.Xml
 
             try
             {
-                xPathResolver.XPathSelectElements(xmlTree, xpath1).ToArray();
+                _ = xPathResolver.XPathSelectElements(xmlTree, xpath1).ToArray();
                 Assert.Fail();
             }
             catch (InvalidOperationException) { }
             try
             {
-                xPathResolver.XPathSelectElements(xmlTree, xpath2).ToArray();
+                _ = xPathResolver.XPathSelectElements(xmlTree, xpath2).ToArray();
                 Assert.Fail();
             }
             catch (InvalidOperationException) { }

@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 
-namespace Xml
+namespace CsvToBinary.Xml
 {
     /// <summary>
     /// 無限ループに関する例外クラス

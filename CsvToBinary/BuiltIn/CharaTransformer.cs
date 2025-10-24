@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
-namespace BuiltIn
+namespace CsvToBinary.BuiltIn
 {
     /// <summary>
     /// 単純文字変換のためのクラス
@@ -25,21 +25,13 @@ namespace BuiltIn
         /// <summary>
         /// 1つの単純文字変換結果の取得のためのクラス
         /// </summary>
-        private readonly struct CharaMap : ICharaMap
+        /// <param name="to">変換結果の文字列</param>
+        private readonly struct CharaMap(string to) : ICharaMap
         {
             /// <summary>
             /// 変換結果の文字列
             /// </summary>
-            private readonly string to;
-
-            /// <summary>
-            /// コンストラクタ
-            /// </summary>
-            /// <param name="to">変換結果の文字列</param>
-            public CharaMap(string to)
-            {
-                this.to = to;
-            }
+            private readonly string to = to;
 
             /// <summary>
             /// 変換結果の文字列の取得
@@ -54,27 +46,18 @@ namespace BuiltIn
         /// <summary>
         /// 1つのファイルからの単純文字変換結果の取得のためのクラス
         /// </summary>
-        private readonly struct CharaMapFromFile : ICharaMap
+        /// <param name="to">変換先の文字列を示すパス</param>
+        /// <param name="inst">親クラスのインスタンス</param>
+        private readonly struct CharaMapFromFile(string to, CharaTransformer inst) : ICharaMap
         {
             /// <summary>
             /// 変換先の文字列を示すパス(相対パスなら実行ファイルの位置を基準としてパスを構築)
             /// </summary>
-            private readonly string to;
+            private readonly string to = Path.IsPathRooted(to) ? to : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, to);
             /// <summary>
             /// 親クラスのインスタンス
             /// </summary>
-            private readonly CharaTransformer inst;
-
-            /// <summary>
-            /// コンストラクタ
-            /// </summary>
-            /// <param name="to">変換先の文字列を示すパス</param>
-            /// <param name="inst">親クラスのインスタンス</param>
-            public CharaMapFromFile(string to, CharaTransformer inst)
-            {
-                this.to = Path.IsPathRooted(to) ? to : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, to);
-                this.inst = inst;
-            }
+            private readonly CharaTransformer inst = inst;
 
             /// <summary>
             /// 変換結果の文字列の取得
@@ -103,27 +86,18 @@ namespace BuiltIn
         /// <summary>
         /// 1つのファイルからの正規表現を基にした単純文字変換結果の取得のためのクラス
         /// </summary>
-        private readonly struct RegexCharaMap : IRegexCharaMap
+        /// <param name="regex">変換元のパターンマッチングを行う正規表現</param>
+        /// <param name="to">正規表現の結果の埋め込みが可能な変換結果の文字列</param>
+        private readonly struct RegexCharaMap(Regex regex, string to) : IRegexCharaMap
         {
             /// <summary>
             /// 変換元のパターンマッチングを行う正規表現
             /// </summary>
-            private readonly Regex regex;
+            private readonly Regex regex = regex;
             /// <summary>
             /// 正規表現の結果の埋め込みが可能な変換結果の文字列
             /// </summary>
-            private readonly string to;
-
-            /// <summary>
-            /// コンストラクタ
-            /// </summary>
-            /// <param name="regex">変換元のパターンマッチングを行う正規表現</param>
-            /// <param name="to">正規表現の結果の埋め込みが可能な変換結果の文字列</param>
-            public RegexCharaMap(Regex regex, string to)
-            {
-                this.regex = regex;
-                this.to = to;
-            }
+            private readonly string to = to;
 
             /// <summary>
             /// 変換結果の文字列の取得
@@ -137,7 +111,7 @@ namespace BuiltIn
                 if (m.Success)
                 {
                     offset += m.Length;
-                    to = string.Format(this.to, m.Groups.Values.ToArray());
+                    to = string.Format(this.to, [.. m.Groups]);
                     return true;
                 }
                 to = null;
@@ -148,27 +122,20 @@ namespace BuiltIn
         /// <summary>
         /// 1つの正規表現を基にした単純文字変換結果の取得のためのクラス
         /// </summary>
-        private readonly struct RegexCharaMapFromFile : IRegexCharaMap
+        private readonly struct RegexCharaMapFromFile(Regex regex, string to, CharaTransformer inst) : IRegexCharaMap
         {
             /// <summary>
             /// 変換元のパターンマッチングを行う正規表現
             /// </summary>
-            private readonly Regex regex;
+            private readonly Regex regex = regex;
             /// <summary>
             /// 正規表現の結果の埋め込みが可能な変換結果の文字列
             /// </summary>
-            private readonly string to;
+            private readonly string to = to;
             /// <summary>
             /// 親クラスのインスタンス
             /// </summary>
-            private readonly CharaTransformer inst;
-
-            public RegexCharaMapFromFile(Regex regex, string to, CharaTransformer inst)
-            {
-                this.regex = regex;
-                this.to = to;
-                this.inst = inst;
-            }
+            private readonly CharaTransformer inst = inst;
 
             /// <summary>
             /// 変換結果の文字列の取得
@@ -183,7 +150,7 @@ namespace BuiltIn
                 {
                     offset += m.Length;
                     // 変換先のパスの構築(相対パスなら実行ファイルの位置を基準としてパスを構築)
-                    var toFile = string.Format(this.to, m.Groups.Values.ToArray());
+                    var toFile = string.Format(this.to, [.. m.Groups]);
                     var toFile2 = Path.IsPathRooted(toFile) ? toFile : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, toFile);
                     to = this.inst.LoadFile(toFile2);
                     return true;

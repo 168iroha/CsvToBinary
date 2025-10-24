@@ -1,36 +1,27 @@
 ﻿using System.Xml.Linq;
-using Xml;
+using CsvToBinary.Xml;
 
-namespace Data
+namespace CsvToBinary.Data
 {
     /// <summary>
     /// バイナリデータの書き込みに関するクラス
     /// </summary>
-    public class BinaryWriter : IDataWriter
+    /// <param name="stream">書き込み先のStream</param>
+    /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
+    public class BinaryWriter(Stream stream, IXmlToBinary xmlToBinary) : IDataWriter
     {
         /// <summary>
         /// 書き込み先のStream
         /// </summary>
-        private readonly Stream stream;
+        private readonly Stream stream = stream;
 
         /// <summary>
         /// XMLをStreamへ書き出す処理が記載されたインスタンス
         /// </summary>
-        private readonly IXmlToBinary xmlToBinary;
+        private readonly IXmlToBinary xmlToBinary = xmlToBinary;
 
         // 遅延評価のためのスタック
         private readonly Stack<Stack<XElement>> lazyEvalStack = [];
-
-        /// <summary>
-        /// コンストラクタ
-        /// </summary>
-        /// <param name="stream">書き込み先のStream</param>
-        /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
-        public BinaryWriter(Stream stream, IXmlToBinary xmlToBinary)
-        {
-            this.stream = stream;
-            this.xmlToBinary = xmlToBinary;
-        }
 
         /// <summary>
         /// 処理単位のデータを書き込む
@@ -89,6 +80,7 @@ namespace Data
         public void Dispose()
         {
             this.stream.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

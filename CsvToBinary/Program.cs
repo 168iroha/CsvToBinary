@@ -1,7 +1,7 @@
 ﻿using System.Xml.Linq;
-using BuiltIn;
-using Data;
-using Xml;
+using CsvToBinary.BuiltIn;
+using CsvToBinary.Data;
+using CsvToBinary.Xml;
 
 class Program
 {
@@ -133,7 +133,7 @@ class Program
             var xparhResolver = new XPathResolver();
             // 変換器の定義
             var transformControl = new TransformerControl(
-                (string path) =>
+                path =>
                 {
                     try
                     {
@@ -145,7 +145,7 @@ class Program
                             // 単純文字変換器
                             "chara-map" =>
                             new CharaTransformer(doc,
-                                (string path) =>
+                                path =>
                                 {
                                     // BOMを確認して適宜Unicode系で読み込む
                                     using var stream = new StreamReader(path, true);
@@ -177,7 +177,7 @@ class Program
             var xmlTraverser = new XmlTraverser(
                 xparhResolver,
                 xmlToBinary,
-                (string path) =>
+                path =>
                 {
                     try
                     {
@@ -193,14 +193,14 @@ class Program
                         throw new InputDataException($"読み込み対象に指定されたXMLファイル[{path}]が存在しません", null, ex);
                     }
                 },
-                (string type, string name, IXmlToBinary xmlToBinary) =>
+                (type, name, xmlToBinary) =>
                 {
                     try
                     {
                         return type switch
                         {
                             // バイナリファイルへの出力
-                            "binary-file" => new Data.BinaryWriter(new FileStream(name, FileMode.Create, FileAccess.ReadWrite, FileShare.None), xmlToBinary),
+                            "binary-file" => new CsvToBinary.Data.BinaryWriter(new FileStream(name, FileMode.Create, FileAccess.ReadWrite, FileShare.None), xmlToBinary),
                             _ => throw new InputDataException($"型[{type}]に対応する出力先は存在しません", null)
                         };
                     }

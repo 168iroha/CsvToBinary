@@ -1,7 +1,6 @@
 ﻿using System.Xml.Linq;
-using System.Xml.XPath;
 
-namespace Xml
+namespace CsvToBinary.Xml
 {
 
     /// <summary>

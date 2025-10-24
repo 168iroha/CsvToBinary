@@ -1,4 +1,4 @@
-﻿using Xml;
+﻿using CsvToBinary.Xml;
 
 namespace tests.Xml
 {
@@ -18,7 +18,7 @@ namespace tests.Xml
         }
 
         [TestMethod]
-        public void _フルで指定されていない2進数文字列をバイトデータに変換()
+        public void フルで指定されていない2進数文字列をバイトデータに変換()
         {
             var str = "011";
             var bytes = ConvertToBytes.FromBinary(str);
@@ -98,7 +98,7 @@ namespace tests.Xml
         }
 
         [TestMethod]
-        public void _フルで指定されていない16進数文字列をバイトデータに変換()
+        public void フルで指定されていない16進数文字列をバイトデータに変換()
         {
             var str = "C";
             var bytes = ConvertToBytes.FromHexadecimal(str);
@@ -120,7 +120,7 @@ namespace tests.Xml
         }
 
         [TestMethod]
-        public void _空データの変換()
+        public void 空データの変換()
         {
             Assert.AreEqual(ConvertToBytes.FromBinary("").Length, 0);
             Assert.AreEqual(ConvertToBytes.FromHexadecimal("").Length, 0);

@@ -1,7 +1,7 @@
-using BuiltIn;
+using CsvToBinary.BuiltIn;
 using System.Xml.Linq;
 
-namespace tests.BultIn
+namespace tests.BuiltIn
 {
     [TestClass]
     public class CharaTransformerTests
@@ -34,7 +34,7 @@ namespace tests.BultIn
                 )
             ));
 
-            var transformer = new CharaTransformer(xmlTree, (string x) => "");
+            var transformer = new CharaTransformer(xmlTree, x => "");
 
             Assert.AreEqual(to, transformer.Transform(from));
         }
@@ -87,7 +87,7 @@ namespace tests.BultIn
                 )
             ));
 
-            var transformer = new CharaTransformer(xmlTree, (string x) => "");
+            var transformer = new CharaTransformer(xmlTree, x => "");
 
             Assert.AreEqual(to, transformer.Transform(from));
         }
@@ -132,7 +132,7 @@ namespace tests.BultIn
                 )
             ));
 
-            var transformer = new CharaTransformer(xmlTree, (string x) => "");
+            var transformer = new CharaTransformer(xmlTree, x => "");
 
             Assert.AreEqual(to, transformer.Transform(from));
         }
@@ -151,7 +151,8 @@ namespace tests.BultIn
 
             // ファイルを読み込む関数は単にファイル名部を抽出するようにする
             var cnt = 0;
-            var transformer = new CharaTransformer(xmlTree, (string x) => {
+            var transformer = new CharaTransformer(xmlTree, x =>
+            {
                 ++cnt;
                 return Path.GetFileNameWithoutExtension(x);
             });
@@ -181,7 +182,7 @@ namespace tests.BultIn
                 )
             ));
 
-            var transformer = new CharaTransformer(xmlTree, (string x) => "");
+            var transformer = new CharaTransformer(xmlTree, x => "");
 
             Assert.AreEqual(to, transformer.Transform(from));
         }
@@ -211,7 +212,7 @@ namespace tests.BultIn
                 )
             ));
 
-            var transformer = new CharaTransformer(xmlTree, (string x) => "");
+            var transformer = new CharaTransformer(xmlTree, x => "");
 
             Assert.AreEqual(to, transformer.Transform(from));
         }
@@ -227,7 +228,7 @@ namespace tests.BultIn
 
             try
             {
-                var transformer = new CharaTransformer(xmlTree, (string x) => "");
+                var transformer = new CharaTransformer(xmlTree, x => "");
                 Assert.Fail();
             }
             catch (ArgumentException) { }
@@ -245,7 +246,7 @@ namespace tests.BultIn
 
             try
             {
-                var transformer = new CharaTransformer(xmlTree, (string x) => "");
+                var transformer = new CharaTransformer(xmlTree, x => "");
                 Assert.Fail();
             }
             catch (ArgumentException) { }
@@ -263,7 +264,7 @@ namespace tests.BultIn
 
             try
             {
-                var transformer = new CharaTransformer(xmlTree, (string x) => "");
+                var transformer = new CharaTransformer(xmlTree, x => "");
                 Assert.Fail();
             }
             catch (ArgumentException) { }
@@ -281,7 +282,7 @@ namespace tests.BultIn
                 )
             ));
 
-            var transformer = new CharaTransformer(xmlTree, (string x) => "");
+            var transformer = new CharaTransformer(xmlTree, x => "");
 
             try
             {

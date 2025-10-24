@@ -1,15 +1,19 @@
-﻿using BuiltIn;
+﻿using CsvToBinary.BuiltIn;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
 
-namespace Xml
+namespace CsvToBinary.Xml
 {
 
     /// <summary>
     /// XMLをバイナリ形式でStreamへ書き込むクラス
     /// </summary>
-    public class XmlToBinary : IXmlToBinary
+    /// <param name="transformerControl">transformerによる文字列変換のためのインスタンス</param>
+    /// <param name="counter">transformerによる文字列変換のためのインスタンス</param>
+    /// <param name="xPathResolver">XPathの解決のためのインスタンス</param>
+    /// <param name="externalDic">変換時に外部から与えるパラメータ</param>
+    public class XmlToBinary(ITransformerControl transformerControl, ICounter counter, IXPathResolver xPathResolver, Dictionary<string, string> externalDic) : IXmlToBinary
     {
         /// <summary>
         /// パディングの方向の定義
@@ -27,37 +31,22 @@ namespace Xml
         /// <summary>
         /// transformerによる文字列変換のためのインスタンス
         /// </summary>
-        private readonly ITransformerControl transformerControl;
+        private readonly ITransformerControl transformerControl = transformerControl;
 
         /// <summary>
         /// カウンタ値の取得のためのインスタンス
         /// </summary>
-        private readonly ICounter counter;
+        private readonly ICounter counter = counter;
 
         /// <summary>
         /// XPathの解決のためのインスタンス
         /// </summary>
-        private readonly IXPathResolver xPathResolver;
+        private readonly IXPathResolver xPathResolver = xPathResolver;
 
         /// <summary>
         /// 変換時に外部から与えるパラメータ
         /// </summary>
-        private readonly Dictionary<string, string> externalDic;
-
-        /// <summary>
-        /// コンストラクタ
-        /// </summary>
-        /// <param name="transformerControl">transformerによる文字列変換のためのインスタンス</param>
-        /// <param name="counter">transformerによる文字列変換のためのインスタンス</param>
-        /// <param name="xPathResolver">XPathの解決のためのインスタンス</param>
-        /// <param name="externalDic">変換時に外部から与えるパラメータ</param>
-        public XmlToBinary(ITransformerControl transformerControl, ICounter counter, IXPathResolver xPathResolver, Dictionary<string, string> externalDic)
-        {
-            this.transformerControl = transformerControl;
-            this.counter = counter;
-            this.xPathResolver = xPathResolver;
-            this.externalDic = externalDic;
-        }
+        private readonly Dictionary<string, string> externalDic = externalDic;
 
         /// <summary>
         /// 文字列を任意のエンコーディングでバイト列に変換する(エンディアンの変換は未実装)<br />
@@ -223,7 +212,7 @@ namespace Xml
         /// </summary>
         /// <param name="element">パディング情報が記載されたノード</param>
         /// <returns>パディング情報</returns>
-        private (PaddingDirection direction, string padding) GetPadding(XElement element)
+        private static (PaddingDirection direction, string padding) GetPadding(XElement element)
         {
             var padding = element.Attribute("padding")?.Value;
             if (padding is null)
@@ -262,7 +251,7 @@ namespace Xml
             }
 
             // パディングに関するノード
-            var (direction, padding) = this.GetPadding(element);
+            var (direction, padding) = GetPadding(element);
             // 出力エンコーディング
             var encoding = element.Attribute("encoding")?.Value;
 

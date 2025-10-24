@@ -1,10 +1,10 @@
-﻿using BuiltIn;
+﻿using CsvToBinary.BuiltIn;
 using System.Collections;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using Xml;
+using CsvToBinary.Xml;
 
 namespace tests.Xml
 {
