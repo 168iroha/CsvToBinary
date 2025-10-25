@@ -790,6 +790,8 @@ namespace CsvToBinary.Xml
         public IEnumerable<IDataWriter> Traversal(IDataWriter? writer, (IDataReader?, XDocument) entry, List<(IDataReader?, XDocument)> combined, string globalKey = "")
         {
             var root = entry.Item2.Root;
+            // 書き込み終了の通知が必要でないかを示すフラグ
+            bool noEndtoWriting = writer is not null;
 
             if (root is not null && root.HasElements)
             {
@@ -910,7 +912,7 @@ namespace CsvToBinary.Xml
                     }
                 }
 
-                if (writer is not null)
+                if (!noEndtoWriting && writer is not null)
                 {
                     // 書き込み終了の通知
                     writer.WriteChunk();
