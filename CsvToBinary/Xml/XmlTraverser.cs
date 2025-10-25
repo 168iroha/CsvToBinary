@@ -955,6 +955,8 @@ namespace CsvToBinary.Xml
                         //case "repeat":
                         //    this.TraversalRepeatNode(reader, key, sibling, combinedXml, scanStack, repeatStack);
                         //    break;
+                        case "nop":
+                            break;
                         default:
                             throw new XmlFormatException($"{sibling.Name.LocalName}というタグ名は不明です", element);
                     }
