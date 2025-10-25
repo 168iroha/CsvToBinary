@@ -10,10 +10,10 @@ class Program
     /// </summary>
     /// <param name="args">コマンドライン引数</param>
     /// <returns></returns>
-    static public (Dictionary<string, string> externalDic, (IDataReader?, XDocument) entry, List<(IDataReader?, XDocument)> combined) ParseCommandLine(string[] args)
+    static public (Dictionary<string, string> externalDic, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined) ParseCommandLine(string[] args)
     {
-        (IDataReader?, XDocument)? entry = null;
-        List<(IDataReader?, XDocument)> combined = [];
+        (IDataReader?, XmlDocumentWithPath)? entry = null;
+        List<(IDataReader?, XmlDocumentWithPath)> combined = [];
         IDataReader? inputFile = null;
         Dictionary<string, string> externalDic = [];
 
@@ -27,15 +27,16 @@ class Program
                         throw new ArgumentException("ファイル名の入力がありません");
                     }
                     ++i;
+                    var path = Path.GetFullPath(args[i]);
                     if (entry is null)
                     {
-                        using var stream = new FileStream(args[i], FileMode.Open, FileAccess.Read, FileShare.Read);
-                        entry = (inputFile, XDocument.Load(stream));
+                        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        entry = (inputFile, new XmlDocumentWithPath(XDocument.Load(stream), path));
                     }
                     else
                     {
-                        using var stream = new FileStream(args[i], FileMode.Open, FileAccess.Read, FileShare.Read);
-                        combined.Add((inputFile, XDocument.Load(stream)));
+                        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        combined.Add((inputFile, new XmlDocumentWithPath(XDocument.Load(stream), path)));
                     }
                     inputFile = null;
                     break;

@@ -19,12 +19,12 @@ namespace CsvToBinary.Xml
         /// 結合するために用いるXMLのためのクラス
         /// </summary>
         /// <param name="combined">逐次結合されるXML</param>
-        private class CombinedXml(List<(IDataReader?, XDocument)> combined)
+        private class CombinedXml(List<(IDataReader?, XmlDocumentWithPath)> combined)
         {
             /// <summary>
             /// 逐次結合されるXML
             /// </summary>
-            private readonly List<(IDataReader?, XDocument)> combined = combined;
+            private readonly List<(IDataReader?, XmlDocumentWithPath)> combined = combined;
             /// <summary>
             /// 現在参照しているcombined
             /// </summary>
@@ -34,7 +34,7 @@ namespace CsvToBinary.Xml
             /// 現在参照している結合されるXMLの取得
             /// </summary>
             /// <returns>現在参照している結合されるXML</returns>
-            public (IDataReader?, XDocument)? Current()
+            public (IDataReader?, XmlDocumentWithPath)? Current()
             {
                 if (this.CurrentComblinedIndex is not null && this.CurrentComblinedIndex < this.combined.Count)
                 {
@@ -106,7 +106,7 @@ namespace CsvToBinary.Xml
             private readonly string elementKey;
 
             /// <summary>
-            /// XMLの深さ有線探索のためのスタック(兄弟要素を走査する)
+            /// XMLの深さ優先探索のためのスタック(兄弟要素を走査する)
             /// </summary>
             private readonly Stack<(string, XElement)> scanStack;
 
@@ -119,7 +119,7 @@ namespace CsvToBinary.Xml
             /// コンストラクタ
             /// </summary>
             /// <param name="inst">親クラス</param>
-            /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+            /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
             /// <param name="element">ループの起点のrepeat要素</param>
             /// <param name="key">elementの位置を示すキー</param>
             /// <param name="fetchDefault">ループの項目についてフェッチを行うかのデフォルト値</param>
@@ -242,7 +242,7 @@ namespace CsvToBinary.Xml
         /// 結合されるXMLのためのrepeatの実装
         /// </summary>
         /// <param name="inst">親クラス</param>
-        /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+        /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
         /// <param name="element">ループの起点のrepeat要素</param>
         /// <param name="key">elementの位置を示すキー</param>
         /// <param name="combinedXml">結合するために用いるXML</param>
@@ -300,7 +300,7 @@ namespace CsvToBinary.Xml
         /// 結合対象の1つのファイルのレコードの読み込みのためのrepeatの実装
         /// </summary>
         /// <param name="inst">親クラス</param>
-        /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+        /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
         /// <param name="element">ループの起点のrepeat要素</param>
         /// <param name="key">elementの位置を示すキー</param>
         /// <param name="combinedXml">結合するために用いるXML</param>
@@ -374,7 +374,7 @@ namespace CsvToBinary.Xml
             /// コンストラクタ
             /// </summary>
             /// <param name="inst">親クラス</param>
-            /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+            /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
             /// <param name="element">ループの起点のrepeat要素</param>
             /// <param name="key">elementの位置を示すキー</param>
             /// <param name="reader">データの読み込み元</param>
@@ -440,7 +440,7 @@ namespace CsvToBinary.Xml
         /// <summary>
         /// 外部XMLに関するマップ
         /// </summary>
-        private readonly Dictionary<string, XDocument> xmlDict = [];
+        private readonly Dictionary<string, XmlDocumentWithPath> xmlDict = [];
 
         /// <summary>
         /// 外部XMLを読み込むための関数
@@ -482,14 +482,20 @@ namespace CsvToBinary.Xml
         /// XMLの読み込み
         /// </summary>
         /// <param name="target">読み込み対象</param>
+        /// <param name="relative">読み込み元となるパス</param>
         /// <returns>読み込み結果</returns>
-        private XDocument ImportXml(string target)
+        private XmlDocumentWithPath ImportXml(string target, string relative)
         {
+            var parentPath = Path.GetDirectoryName(relative);
             // 相対パスなら実行ファイルの位置を基準としてパスを構築して読み込む
-            var path = Path.IsPathRooted(target) ? target : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, target);
-            if (!this.xmlDict.TryGetValue(path, out XDocument? doc))
+            var path = Path.GetFullPath(
+                Path.IsPathRooted(target) ? target :
+                string.IsNullOrEmpty(parentPath) ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, target) :
+                Path.Combine(parentPath, target)
+                );
+            if (!this.xmlDict.TryGetValue(path, out XmlDocumentWithPath? doc))
             {
-                doc = this.xmlFunc(path);
+                doc = new XmlDocumentWithPath(this.xmlFunc(path), path);
                 this.xmlDict[path] = doc;
             }
             return doc;
@@ -499,8 +505,9 @@ namespace CsvToBinary.Xml
         /// トラバーサルで走査に用いるXMLの読み込み
         /// </summary>
         /// <param name="importNode">読み込み対象が記載されたノード</param>
+        /// <param name="relative">読み込み元となるパス</param>
         /// <returns>読み込み結果</returns>
-        private XDocument ImportXml(XElement importNode)
+        private XmlDocumentWithPath ImportXml(XElement importNode, string relative)
         {
             // 読み込むXMLのパスの取得
             var target = importNode.Attribute("target")?.Value;
@@ -518,7 +525,8 @@ namespace CsvToBinary.Xml
                 throw new XmlFormatException("import[@type='xml']を指定した場合、targetあるいはxtargetの指定は必須です", importNode);
             }
             // XMLを読み込んでディープコピーを返す
-            return new XDocument(this.ImportXml(target));
+            var doc = this.ImportXml(target, relative);
+            return new XmlDocumentWithPath(new XDocument(doc.Document), doc.Path);
         }
 
         /// <summary>
@@ -526,17 +534,18 @@ namespace CsvToBinary.Xml
         /// </summary>
         /// <param name="element">編集情報が記載された要素</param>
         /// <param name="targetDoc">読み込む対象のXML</param>
+        /// <param name="relative">読み込み元となるパス</param>
         /// <exception cref="ArgumentException"></exception>
-        private void EditXml(XElement element, XDocument targetDoc)
+        private void EditXml(XElement element, XmlDocumentWithPath targetDoc, string relative)
         {
             // targetで読み込んだXMLの変換のために用いるXMLファイル名
             var transform = element.Attribute("transform")?.Value;
 
-            XDocument? transformDoc = null;
+            XmlDocumentWithPath? transformDoc = null;
             if (transform is not null)
             {
                 // 変換のために用いるXMLの取得
-                transformDoc = this.ImportXml(transform);
+                transformDoc = this.ImportXml(transform, relative);
             }
             // 変換規則に従って変換をする
             foreach (var map in this.xPathResolver.XPathSelectElements(element, "./map"))
@@ -551,10 +560,10 @@ namespace CsvToBinary.Xml
                     // 外部から与えられるマップで変換
                     "external" => externalDic.TryGetValue(value, out string? v) ? v : "",
                     // XPathを用いて変換
-                    _ => this.xPathResolver.XPathEvaluate(transformDoc ?? throw new XmlFormatException("import[@type='xml']/map[@from]のときimportにはtransform属性が必須です", element), value)
+                    _ => this.xPathResolver.XPathEvaluate(transformDoc?.Document ?? throw new XmlFormatException("import[@type='xml']/map[@from]のときimportにはtransform属性が必須です", element), value)
                 };
                 // 置換の実行
-                foreach (XPathNavigator nav in this.xPathResolver.XPathSelectNodes(targetDoc, fromAttr.Value))
+                foreach (XPathNavigator nav in this.xPathResolver.XPathSelectNodes(targetDoc.Document, fromAttr.Value))
                 {
                     switch (nav.NodeType)
                     {
@@ -579,21 +588,21 @@ namespace CsvToBinary.Xml
         /// </summary>
         /// <param name="root">解決対象の要素</param>
         /// <exception cref="ArgumentException"></exception>
-        private void ResolveImportXml(XElement root)
+        private void ResolveImportXml(XmlDocumentWithPath root)
         {
-            Stack<XNode> dfsStack = [];
-            Stack<(XElement ImportNode, XDocument TargetDoc)> backtrackStack = [];
+            Stack<XmlDocumentWithPath> dfsStack = [];
+            Stack<(XElement ImportNode, XmlDocumentWithPath TargetDoc, string Relative)> backtrackStack = [];
             dfsStack.Push(root);
 
-            // 深さ有線探索でループ
+            // 深さ優先探索でループ
             while (dfsStack.Count > 0)
             {
-                var node = dfsStack.Pop();
+                var (node, relative) = dfsStack.Pop();
 
                 foreach (var importNode in this.xPathResolver.XPathSelectElements(node, "//import[@type='xml']"))
                 {
-                    var targetDoc = this.ImportXml(importNode);
-                    backtrackStack.Push((importNode, targetDoc));
+                    var targetDoc = this.ImportXml(importNode, relative);
+                    backtrackStack.Push((importNode, targetDoc, relative));
                     dfsStack.Push(targetDoc);
                 }
             }
@@ -601,12 +610,12 @@ namespace CsvToBinary.Xml
             // バックトラックして読み込んだXMLを子から順に1つのXMLにする
             while (backtrackStack.Count > 0)
             {
-                var (importNode, targetDoc) = backtrackStack.Pop();
+                var (importNode, targetDoc, relative) = backtrackStack.Pop();
                 var name = importNode.Attribute("name")?.Value ?? "";
 
                 // importNodeをtargetDocのXMLに置換する(import[@name='xxx']をitems[@name='xxx']に丸ごと入れ替える)
-                this.EditXml(importNode, targetDoc);
-                importNode.ReplaceAll(new XAttribute("name", name), targetDoc.Root!.Elements());
+                this.EditXml(importNode, targetDoc, relative);
+                importNode.ReplaceAll(new XAttribute("name", name), targetDoc.Document.Root!.Elements());
                 importNode.Name = "items";
             }
         }
@@ -705,12 +714,13 @@ namespace CsvToBinary.Xml
         /// <summary>
         /// importノードの解析
         /// </summary>
-        /// <param name="writer">書き込み先</param>
         /// <param name="key">elementの位置を示すキー</param>
+        /// <param name="writer">書き込み先</param>
         /// <param name="element">解析対象の要素</param>
+        /// <param name="relative">読み込み元となるパス</param>
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
         /// <param name="scanStack">探索のための</param>
-        private IEnumerable<IDataWriter> TraversalImportNode(string key, IDataWriter? writer, XElement element, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
+        private IEnumerable<IDataWriter> TraversalImportNode(string key, IDataWriter? writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
         {
             var type = element.Attribute("type")?.Value;
 
@@ -720,16 +730,16 @@ namespace CsvToBinary.Xml
                 case "combined":
                     // 結合されたXMLの解析へ制御を移す
                     var current = combinedXml.Current() ?? throw new XmlFormatException("結合されるXMLを走査していない状態でimport/[@type='combined']を解析しようとしています", element);
-                    this.EditXml(element, current.Item2);
+                    this.EditXml(element, current.Item2, relative);
                     return this.Traversal(writer, current, []);
                 case "dynamic":
                     // 制御を移さずに読み込む
-                    var targetDoc = this.ImportXml(element);
-                    var root = targetDoc.Root;
+                    var targetDoc = this.ImportXml(element, relative);
+                    var root = targetDoc.Document.Root;
                     if (root is not null)
                     {
                         // XMLのimportの解決は実施しない
-                        this.EditXml(element, targetDoc);
+                        this.EditXml(element, targetDoc, relative);
                         TraversalItemsNode(key, root, scanStack);
                     }
                     break;
@@ -787,15 +797,17 @@ namespace CsvToBinary.Xml
         /// <param name="entry">トラバーサルのエントリポイントとなるXML</param>
         /// <param name="combined">entryに対して逐次結合されるXML</param>
         /// <param name="globalKey">entryの位置を示すキー</param>
-        public IEnumerable<IDataWriter> Traversal(IDataWriter? writer, (IDataReader?, XDocument) entry, List<(IDataReader?, XDocument)> combined, string globalKey = "")
+        public IEnumerable<IDataWriter> Traversal(IDataWriter? writer, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined, string globalKey = "")
         {
-            var root = entry.Item2.Root;
+            var root = entry.Item2.Document.Root;
+            // 書き込み終了の通知が必要でないかを示すフラグ
+            bool noEndtoWriting = writer is not null;
 
             if (root is not null && root.HasElements)
             {
                 var reader = entry.Item1;
                 // 外部の参照が行われるXMLを1つのファイルにまとめる
-                this.ResolveImportXml(root);
+                this.ResolveImportXml(entry.Item2);
                 // repeatにidを付与する
                 int repeatCnt = 0;
                 foreach (var repeatNode in this.xPathResolver.XPathSelectElements(root, "//repeat"))
@@ -803,7 +815,7 @@ namespace CsvToBinary.Xml
                     repeatNode.SetAttributeValue("repeat-id", repeatCnt++);
                 }
 
-                // XMLの深さ有線探索のためのスタック(兄弟要素を走査する)
+                // XMLの深さ優先探索のためのスタック(兄弟要素を走査する)
                 Stack<(string, XElement)> scanStack = [];
                 scanStack.Push((globalKey, root.Elements().First()));
                 // repeatのためのスタック
@@ -850,7 +862,7 @@ namespace CsvToBinary.Xml
                                 }
                                 break;
                             case "import":
-                                foreach (var ret in this.TraversalImportNode(key, writer, sibling, combinedXml, scanStack))
+                                foreach (var ret in this.TraversalImportNode(key, writer, sibling, entry.Item2.Path, combinedXml, scanStack))
                                 {
                                     yield return ret;
                                 }
@@ -910,7 +922,7 @@ namespace CsvToBinary.Xml
                     }
                 }
 
-                if (writer is not null)
+                if (!noEndtoWriting && writer is not null)
                 {
                     // 書き込み終了の通知
                     writer.WriteChunk();
@@ -932,7 +944,7 @@ namespace CsvToBinary.Xml
         {
             var reader = entry.Item1;
 
-            // XMLの深さ有線探索のためのスタック(兄弟要素を走査する)
+            // XMLの深さ優先探索のためのスタック(兄弟要素を走査する)
             Stack<(string, XElement)> scanStack = [];
             scanStack.Push((globalKey, entry.Item2.Elements().First()));
 
@@ -955,6 +967,8 @@ namespace CsvToBinary.Xml
                         //case "repeat":
                         //    this.TraversalRepeatNode(reader, key, sibling, combinedXml, scanStack, repeatStack);
                         //    break;
+                        case "nop":
+                            break;
                         default:
                             throw new XmlFormatException($"{sibling.Name.LocalName}というタグ名は不明です", element);
                     }
