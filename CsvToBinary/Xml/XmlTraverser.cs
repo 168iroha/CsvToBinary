@@ -106,7 +106,7 @@ namespace CsvToBinary.Xml
             private readonly string elementKey;
 
             /// <summary>
-            /// XMLの深さ有線探索のためのスタック(兄弟要素を走査する)
+            /// XMLの深さ優先探索のためのスタック(兄弟要素を走査する)
             /// </summary>
             private readonly Stack<(string, XElement)> scanStack;
 
@@ -119,7 +119,7 @@ namespace CsvToBinary.Xml
             /// コンストラクタ
             /// </summary>
             /// <param name="inst">親クラス</param>
-            /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+            /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
             /// <param name="element">ループの起点のrepeat要素</param>
             /// <param name="key">elementの位置を示すキー</param>
             /// <param name="fetchDefault">ループの項目についてフェッチを行うかのデフォルト値</param>
@@ -242,7 +242,7 @@ namespace CsvToBinary.Xml
         /// 結合されるXMLのためのrepeatの実装
         /// </summary>
         /// <param name="inst">親クラス</param>
-        /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+        /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
         /// <param name="element">ループの起点のrepeat要素</param>
         /// <param name="key">elementの位置を示すキー</param>
         /// <param name="combinedXml">結合するために用いるXML</param>
@@ -300,7 +300,7 @@ namespace CsvToBinary.Xml
         /// 結合対象の1つのファイルのレコードの読み込みのためのrepeatの実装
         /// </summary>
         /// <param name="inst">親クラス</param>
-        /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+        /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
         /// <param name="element">ループの起点のrepeat要素</param>
         /// <param name="key">elementの位置を示すキー</param>
         /// <param name="combinedXml">結合するために用いるXML</param>
@@ -374,7 +374,7 @@ namespace CsvToBinary.Xml
             /// コンストラクタ
             /// </summary>
             /// <param name="inst">親クラス</param>
-            /// <param name="scanStack">XMLの深さ有線探索のためのスタック(兄弟要素を走査する)</param>
+            /// <param name="scanStack">XMLの深さ優先探索のためのスタック(兄弟要素を走査する)</param>
             /// <param name="element">ループの起点のrepeat要素</param>
             /// <param name="key">elementの位置を示すキー</param>
             /// <param name="reader">データの読み込み元</param>
@@ -594,7 +594,7 @@ namespace CsvToBinary.Xml
             Stack<(XElement ImportNode, XmlDocumentWithPath TargetDoc, string Relative)> backtrackStack = [];
             dfsStack.Push(root);
 
-            // 深さ有線探索でループ
+            // 深さ優先探索でループ
             while (dfsStack.Count > 0)
             {
                 var (node, relative) = dfsStack.Pop();
@@ -944,7 +944,7 @@ namespace CsvToBinary.Xml
         {
             var reader = entry.Item1;
 
-            // XMLの深さ有線探索のためのスタック(兄弟要素を走査する)
+            // XMLの深さ優先探索のためのスタック(兄弟要素を走査する)
             Stack<(string, XElement)> scanStack = [];
             scanStack.Push((globalKey, entry.Item2.Elements().First()));
 
