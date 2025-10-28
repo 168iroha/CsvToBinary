@@ -922,13 +922,16 @@ namespace CsvToBinary.Xml
                     }
                 }
 
-                if (!noEndtoWriting && writer is not null)
+                if (writer is not null)
                 {
                     // 書き込み終了の通知
                     writer.WriteChunk();
                     writer.Pop();
                     // --depth;
-                    yield return writer;
+                    if (!noEndtoWriting)
+                    {
+                        yield return writer;
+                    }
                 }
             }
         }
