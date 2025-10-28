@@ -419,10 +419,6 @@ namespace tests.Xml
 
             _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
 
-            // 書き込み完了にする
-            writer.WriteChunk();
-            writer.Pop();
-
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer, 0, 0, true));
             // readerにより設定されない値の比較
@@ -508,10 +504,6 @@ namespace tests.Xml
 
             _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
 
-            // 書き込み完了にする
-            writer.WriteChunk();
-            writer.Pop();
-
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer));
         }
@@ -577,10 +569,6 @@ namespace tests.Xml
             var writer = new StubDataWriter(xmlToBinary);
 
             _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
-
-            // 書き込み完了にする
-            writer.WriteChunk();
-            writer.Pop();
 
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer));
@@ -675,10 +663,6 @@ namespace tests.Xml
                     ]
                     ).ToArray();
 
-            // 書き込み完了にする
-            writer.WriteChunk();
-            writer.Pop();
-
             // readerにより設定される値の比較
             Assert.IsTrue(reader1.Included(writer, 0, 1));
             Assert.IsTrue(reader2.Included(writer, 0, 3));
@@ -750,10 +734,6 @@ namespace tests.Xml
             using var writer = new StubDataWriter(xmlToBinary);
 
             _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
-
-            // 書き込み完了にする
-            writer.WriteChunk();
-            writer.Pop();
 
             // readerにより設定される値の比較
             for (int i = 0; i < maxCount; ++i)
@@ -839,10 +819,6 @@ namespace tests.Xml
             using var writer = new StubDataWriter(xmlToBinary);
 
             _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
-
-            // 書き込み完了にする
-            writer.WriteChunk();
-            writer.Pop();
 
             // readerにより設定される値の比較
             Assert.IsTrue(reader.Included(writer));
