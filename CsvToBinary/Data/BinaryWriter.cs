@@ -31,7 +31,10 @@ namespace CsvToBinary.Data
             var stack = this.lazyEvalStack.Peek();
             while (stack.Count > 0)
             {
-                this.xmlToBinary.Write(this.stream, stack.Pop());
+                var item = stack.Pop();
+                this.xmlToBinary.Write(this.stream, item);
+                // 2回目以降の評価にoffsetを利用しないために除去
+                item.Attribute("offset")?.Remove();
             }
         }
 

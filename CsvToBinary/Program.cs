@@ -163,7 +163,7 @@ class Program
                 }
             );
             // カウンタの定義
-            var counterPath = "counter.xml";
+            var counterPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "counter.xml");
             if (!File.Exists(counterPath))
             {
                 // カウンタファイルが存在しないときは空の定義ファイルを作成

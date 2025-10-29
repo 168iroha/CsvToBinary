@@ -132,26 +132,52 @@ namespace CsvToBinary.Xml
                 if (unrolling is not null)
                 {
                     this.unrolling = Boolean.Parse(unrolling);
+                    // 前回のループ時に評価した結果を削除する
+                    if (this.unrolling)
+                    {
+                        var prev = this.element;
+                        string id = this.element.Attribute("repeat-id")!.Value;
+                        while (prev.NextNode is not null)
+                        {
+                            var siblingNode = prev.NextNode;
+                            while (siblingNode is not null && siblingNode.NodeType != System.Xml.XmlNodeType.Element)
+                            {
+                                siblingNode = siblingNode.NextNode;
+                            }
+                            var sibling = siblingNode as XElement;
+                            // 一番最後に評価したループ結果のノードのみを残す
+                            if (sibling is not null && sibling.Name.LocalName == "repeat" && sibling.Attribute("repeat-id")?.Value == id)
+                            {
+                                prev.Remove();
+                                prev = sibling;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                        this.element = prev;
+                    }
                 }
                 // ループの項目についてフェッチを行うかの設定
                 this.fetch = fetchDefault;
-                var fetch = element.Attribute("fetch")?.Value;
+                var fetch = this.element.Attribute("fetch")?.Value;
                 if (fetch is not null)
                 {
                     this.fetch = Boolean.Parse(fetch);
                 }
                 this.key = key;
-                this.elementKey = GetElementKey(key, element);
+                this.elementKey = GetElementKey(key, this.element);
 
                 // ループ最大回数の設定
-                var maxCount = element.Attribute("max")?.Value;
+                var maxCount = this.element.Attribute("max")?.Value;
                 if (maxCount is null)
                 {
                     // maxの指定がないときはxmaxのXPathを評価してループ最大回数を得る
-                    var xmaxCount = element.Attribute("xmax")?.Value;
+                    var xmaxCount = this.element.Attribute("xmax")?.Value;
                     if (xmaxCount is not null)
                     {
-                        maxCount = inst.xPathResolver.XPathEvaluate(element, xmaxCount);
+                        maxCount = inst.xPathResolver.XPathEvaluate(this.element, xmaxCount);
                     }
                 }
                 if (maxCount is not null)
@@ -159,32 +185,13 @@ namespace CsvToBinary.Xml
                     this.MaxCount = Int32.Parse(maxCount);
                     if (this.MaxCount < 0)
                     {
-                        throw new InputDataException("repeat/@maxに負数を設定することはできません", element);
+                        throw new InputDataException("repeat/@maxに負数を設定することはできません", this.element);
                     }
                 }
                 this.key = key;
-                this.elementKey = GetElementKey(key, element);
+                this.elementKey = GetElementKey(key, this.element);
 
-                // ループ展開された対象の一番最後以外の要素の削除
-                string id = element.Attribute("repeat-id")!.Value;
-                List<XElement> removeList = [element];
-                foreach (var sibling in element.ElementsAfterSelf())
-                {
-                    if (sibling.Name.LocalName == "repeat" && sibling.Attribute("repeat-id")!.Value == id)
-                    {
-                        removeList.Add(sibling);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                removeList.RemoveAt(removeList.Count - 1);
-                foreach (var node in removeList)
-                {
-                    node.Remove();
-                }
-                element.SetAttributeValue("seq", 0);
+                this.element.SetAttributeValue("seq", 0);
             }
 
             /// <summary>
@@ -326,7 +333,7 @@ namespace CsvToBinary.Xml
                 // 初回はレコードを読み込まない
                 if (this.Count != 0 && this.fetch)
                 {
-                    if (!(current.Item1?.ReadChunk() ?? false))
+                    if ((this.MaxCount is not null && this.Count >= this.MaxCount) || !(current.Item1?.ReadChunk() ?? false))
                     {
                         // 読み込み対象のレコードが存在しない場合は終了
                         this.Finish();
@@ -402,7 +409,7 @@ namespace CsvToBinary.Xml
                         this.reader?.Push();
                         this.stacked = true;
                     }
-                    if (!(this.reader?.ReadChunk() ?? true))
+                    if ((this.MaxCount is not null && this.Count >= this.MaxCount) || !(this.reader?.ReadChunk() ?? true))
                     {
                         // 読み込み対象のデータが存在しない場合は終了
                         this.Finish();
@@ -680,7 +687,7 @@ namespace CsvToBinary.Xml
                 {
                     scanStack.Push((key, siblings.First()));
                 }
-                else
+                else if (element != element.Document?.Root)
                 {
                     // 復帰位置を記憶するためにNOPを挿入
                     var nop = GetNop();
@@ -714,13 +721,13 @@ namespace CsvToBinary.Xml
         /// <summary>
         /// importノードの解析
         /// </summary>
-        /// <param name="key">elementの位置を示すキー</param>
+        /// <param name="reader">データの読み込み元</param>
         /// <param name="writer">書き込み先</param>
         /// <param name="element">解析対象の要素</param>
         /// <param name="relative">読み込み元となるパス</param>
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
         /// <param name="scanStack">探索のための</param>
-        private IEnumerable<IDataWriter> TraversalImportNode(string key, IDataWriter? writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
+        private IEnumerable<IDataWriter> TraversalImportNode(IDataReader? reader, IDataWriter? writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
         {
             var type = element.Attribute("type")?.Value;
 
@@ -738,9 +745,10 @@ namespace CsvToBinary.Xml
                     var root = targetDoc.Document.Root;
                     if (root is not null)
                     {
-                        // XMLのimportの解決は実施しない
+                        // XMLのimportの解決は実施せず、毎回importを評価する
+                        // importしたXML内のimportの解決はする
                         this.EditXml(element, targetDoc, relative);
-                        TraversalItemsNode(key, root, scanStack);
+                        return this.Traversal(writer, (reader, targetDoc), []);
                     }
                     break;
                 case "none":
@@ -810,7 +818,7 @@ namespace CsvToBinary.Xml
                 this.ResolveImportXml(entry.Item2);
                 // repeatにidを付与する
                 int repeatCnt = 0;
-                foreach (var repeatNode in this.xPathResolver.XPathSelectElements(root, "//repeat"))
+                foreach (var repeatNode in this.xPathResolver.XPathSelectElements(root, "//repeat[not(@repeat-id)]"))
                 {
                     repeatNode.SetAttributeValue("repeat-id", repeatCnt++);
                 }
@@ -832,7 +840,8 @@ namespace CsvToBinary.Xml
                 {
                     var (key, element) = scanStack.Pop();
                     var count = scanStack.Count;
-                    foreach (XElement sibling in element.ElementsAfterSelf().Prepend(element))
+                    var sibling = element;
+                    while (sibling is not null)
                     {
                         // siblingに対してタグによる分岐の実施
                         switch (sibling.Name.LocalName)
@@ -862,7 +871,7 @@ namespace CsvToBinary.Xml
                                 }
                                 break;
                             case "import":
-                                foreach (var ret in this.TraversalImportNode(key, writer, sibling, entry.Item2.Path, combinedXml, scanStack))
+                                foreach (var ret in this.TraversalImportNode(reader, writer, sibling, entry.Item2.Path, combinedXml, scanStack))
                                 {
                                     yield return ret;
                                 }
@@ -879,6 +888,14 @@ namespace CsvToBinary.Xml
                         {
                             break;
                         }
+
+                        // 次の兄弟のXElementノードに移動
+                        var nextSibling = sibling.NextNode;
+                        while (nextSibling is not null && nextSibling.NodeType != System.Xml.XmlNodeType.Element)
+                        {
+                            nextSibling = nextSibling.NextNode;
+                        }
+                        sibling = nextSibling as XElement;
                     }
 
                     // 子要素の走査が中断せずに完了したとき
@@ -955,7 +972,8 @@ namespace CsvToBinary.Xml
             {
                 var (key, element) = scanStack.Pop();
                 var count = scanStack.Count;
-                foreach (XElement sibling in element.ElementsAfterSelf().Prepend(element))
+                var sibling = element;
+                while (sibling is not null)
                 {
                     // siblingに対してタグによる分岐の実施
                     switch (sibling.Name.LocalName)
@@ -979,6 +997,14 @@ namespace CsvToBinary.Xml
                     {
                         break;
                     }
+
+                    // 次の兄弟のXElementノードに移動
+                    var nextSibling = sibling.NextNode;
+                    while (nextSibling is not null && nextSibling.NodeType != System.Xml.XmlNodeType.Element)
+                    {
+                        nextSibling = nextSibling.NextNode;
+                    }
+                    sibling = nextSibling as XElement;
                 }
             }
             writer.WriteChunk();
