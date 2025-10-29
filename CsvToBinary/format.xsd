@@ -47,8 +47,10 @@
               </xs:complexType>
             </xs:element>
           </xs:sequence>
-          <!-- 読み込み対象-->
+          <!-- 読み込み対象 -->
           <xs:attribute name="target" />
+          <!-- XPathによる読み込み対象(//import[@type='dynamic']の場合にのみ参照する(//import/@targetの方が優先される)) -->
+          <xs:attribute name="xtarget" />
           <!-- //items/@nameと等価 -->
           <xs:attribute name="name" />
           <!-- 読み込み対象のXMLの変換に用いるXMLの指定(主に設定ファイルを想定) -->
