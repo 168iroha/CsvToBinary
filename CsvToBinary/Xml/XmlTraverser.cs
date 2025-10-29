@@ -326,7 +326,7 @@ namespace CsvToBinary.Xml
                 // 初回はレコードを読み込まない
                 if (this.Count != 0 && this.fetch)
                 {
-                    if (!(current.Item1?.ReadChunk() ?? false))
+                    if ((this.MaxCount is not null && this.Count >= this.MaxCount) || !(current.Item1?.ReadChunk() ?? false))
                     {
                         // 読み込み対象のレコードが存在しない場合は終了
                         this.Finish();
@@ -402,7 +402,7 @@ namespace CsvToBinary.Xml
                         this.reader?.Push();
                         this.stacked = true;
                     }
-                    if (!(this.reader?.ReadChunk() ?? true))
+                    if ((this.MaxCount is not null && this.Count >= this.MaxCount) || !(this.reader?.ReadChunk() ?? true))
                     {
                         // 読み込み対象のデータが存在しない場合は終了
                         this.Finish();
