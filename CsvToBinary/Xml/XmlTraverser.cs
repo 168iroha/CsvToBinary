@@ -811,7 +811,7 @@ namespace CsvToBinary.Xml
                 this.ResolveImportXml(entry.Item2);
                 // repeatにidを付与する
                 int repeatCnt = 0;
-                foreach (var repeatNode in this.xPathResolver.XPathSelectElements(root, "//repeat"))
+                foreach (var repeatNode in this.xPathResolver.XPathSelectElements(root, "//repeat[not(@repeat-id)]"))
                 {
                     repeatNode.SetAttributeValue("repeat-id", repeatCnt++);
                 }
