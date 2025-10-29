@@ -132,26 +132,52 @@ namespace CsvToBinary.Xml
                 if (unrolling is not null)
                 {
                     this.unrolling = Boolean.Parse(unrolling);
+                    // 前回のループ時に評価した結果を削除する
+                    if (this.unrolling)
+                    {
+                        var prev = this.element;
+                        string id = this.element.Attribute("repeat-id")!.Value;
+                        while (prev.NextNode is not null)
+                        {
+                            var siblingNode = prev.NextNode;
+                            while (siblingNode is not null && siblingNode.NodeType != System.Xml.XmlNodeType.Element)
+                            {
+                                siblingNode = siblingNode.NextNode;
+                            }
+                            var sibling = siblingNode as XElement;
+                            // 一番最後に評価したループ結果のノードのみを残す
+                            if (sibling is not null && sibling.Name.LocalName == "repeat" && sibling.Attribute("repeat-id")?.Value == id)
+                            {
+                                prev.Remove();
+                                prev = sibling;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                        this.element = prev;
+                    }
                 }
                 // ループの項目についてフェッチを行うかの設定
                 this.fetch = fetchDefault;
-                var fetch = element.Attribute("fetch")?.Value;
+                var fetch = this.element.Attribute("fetch")?.Value;
                 if (fetch is not null)
                 {
                     this.fetch = Boolean.Parse(fetch);
                 }
                 this.key = key;
-                this.elementKey = GetElementKey(key, element);
+                this.elementKey = GetElementKey(key, this.element);
 
                 // ループ最大回数の設定
-                var maxCount = element.Attribute("max")?.Value;
+                var maxCount = this.element.Attribute("max")?.Value;
                 if (maxCount is null)
                 {
                     // maxの指定がないときはxmaxのXPathを評価してループ最大回数を得る
-                    var xmaxCount = element.Attribute("xmax")?.Value;
+                    var xmaxCount = this.element.Attribute("xmax")?.Value;
                     if (xmaxCount is not null)
                     {
-                        maxCount = inst.xPathResolver.XPathEvaluate(element, xmaxCount);
+                        maxCount = inst.xPathResolver.XPathEvaluate(this.element, xmaxCount);
                     }
                 }
                 if (maxCount is not null)
@@ -159,32 +185,13 @@ namespace CsvToBinary.Xml
                     this.MaxCount = Int32.Parse(maxCount);
                     if (this.MaxCount < 0)
                     {
-                        throw new InputDataException("repeat/@maxに負数を設定することはできません", element);
+                        throw new InputDataException("repeat/@maxに負数を設定することはできません", this.element);
                     }
                 }
                 this.key = key;
-                this.elementKey = GetElementKey(key, element);
+                this.elementKey = GetElementKey(key, this.element);
 
-                // ループ展開された対象の一番最後以外の要素の削除
-                string id = element.Attribute("repeat-id")!.Value;
-                List<XElement> removeList = [element];
-                foreach (var sibling in element.ElementsAfterSelf())
-                {
-                    if (sibling.Name.LocalName == "repeat" && sibling.Attribute("repeat-id")!.Value == id)
-                    {
-                        removeList.Add(sibling);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                removeList.RemoveAt(removeList.Count - 1);
-                foreach (var node in removeList)
-                {
-                    node.Remove();
-                }
-                element.SetAttributeValue("seq", 0);
+                this.element.SetAttributeValue("seq", 0);
             }
 
             /// <summary>
@@ -833,7 +840,8 @@ namespace CsvToBinary.Xml
                 {
                     var (key, element) = scanStack.Pop();
                     var count = scanStack.Count;
-                    foreach (XElement sibling in element.ElementsAfterSelf().Prepend(element))
+                    var sibling = element;
+                    while (sibling is not null)
                     {
                         // siblingに対してタグによる分岐の実施
                         switch (sibling.Name.LocalName)
@@ -880,6 +888,14 @@ namespace CsvToBinary.Xml
                         {
                             break;
                         }
+
+                        // 次の兄弟のXElementノードに移動
+                        var nextSibling = sibling.NextNode;
+                        while (nextSibling is not null && nextSibling.NodeType != System.Xml.XmlNodeType.Element)
+                        {
+                            nextSibling = nextSibling.NextNode;
+                        }
+                        sibling = nextSibling as XElement;
                     }
 
                     // 子要素の走査が中断せずに完了したとき
@@ -956,7 +972,8 @@ namespace CsvToBinary.Xml
             {
                 var (key, element) = scanStack.Pop();
                 var count = scanStack.Count;
-                foreach (XElement sibling in element.ElementsAfterSelf().Prepend(element))
+                var sibling = element;
+                while (sibling is not null)
                 {
                     // siblingに対してタグによる分岐の実施
                     switch (sibling.Name.LocalName)
@@ -980,6 +997,14 @@ namespace CsvToBinary.Xml
                     {
                         break;
                     }
+
+                    // 次の兄弟のXElementノードに移動
+                    var nextSibling = sibling.NextNode;
+                    while (nextSibling is not null && nextSibling.NodeType != System.Xml.XmlNodeType.Element)
+                    {
+                        nextSibling = nextSibling.NextNode;
+                    }
+                    sibling = nextSibling as XElement;
                 }
             }
             writer.WriteChunk();
