@@ -680,7 +680,7 @@ namespace CsvToBinary.Xml
                 {
                     scanStack.Push((key, siblings.First()));
                 }
-                else
+                else if (element != element.Document?.Root)
                 {
                     // 復帰位置を記憶するためにNOPを挿入
                     var nop = GetNop();
@@ -714,13 +714,13 @@ namespace CsvToBinary.Xml
         /// <summary>
         /// importノードの解析
         /// </summary>
-        /// <param name="key">elementの位置を示すキー</param>
+        /// <param name="reader">データの読み込み元</param>
         /// <param name="writer">書き込み先</param>
         /// <param name="element">解析対象の要素</param>
         /// <param name="relative">読み込み元となるパス</param>
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
         /// <param name="scanStack">探索のための</param>
-        private IEnumerable<IDataWriter> TraversalImportNode(string key, IDataWriter? writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
+        private IEnumerable<IDataWriter> TraversalImportNode(IDataReader? reader, IDataWriter? writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
         {
             var type = element.Attribute("type")?.Value;
 
@@ -738,9 +738,10 @@ namespace CsvToBinary.Xml
                     var root = targetDoc.Document.Root;
                     if (root is not null)
                     {
-                        // XMLのimportの解決は実施しない
+                        // XMLのimportの解決は実施せず、毎回importを評価する
+                        // importしたXML内のimportの解決はする
                         this.EditXml(element, targetDoc, relative);
-                        TraversalItemsNode(key, root, scanStack);
+                        return this.Traversal(writer, (reader, targetDoc), []);
                     }
                     break;
                 case "none":
@@ -862,7 +863,7 @@ namespace CsvToBinary.Xml
                                 }
                                 break;
                             case "import":
-                                foreach (var ret in this.TraversalImportNode(key, writer, sibling, entry.Item2.Path, combinedXml, scanStack))
+                                foreach (var ret in this.TraversalImportNode(reader, writer, sibling, entry.Item2.Path, combinedXml, scanStack))
                                 {
                                     yield return ret;
                                 }
