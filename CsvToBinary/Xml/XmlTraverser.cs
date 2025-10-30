@@ -635,7 +635,7 @@ namespace CsvToBinary.Xml
         /// <param name="key">elementの位置を示すキー</param>
         /// <param name="element">解析対象の要素</param>
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
-        private static void TraversalItemNode(IDataWriter? writer, IDataReader? reader, string key, XElement element, CombinedXml combinedXml)
+        private static void TraversalItemNode(IDataWriter writer, IDataReader? reader, string key, XElement element, CombinedXml combinedXml)
         {
             var elementKey = GetElementKey(key, element);
             var type = element.Attribute("type")?.Value;
@@ -665,7 +665,7 @@ namespace CsvToBinary.Xml
                 valueNode.Value = value;
             }
             // データを書き出す
-            writer?.SetData(elementKey, element);
+            writer.SetData(elementKey, element);
         }
 
         /// <summary>
@@ -727,7 +727,7 @@ namespace CsvToBinary.Xml
         /// <param name="relative">読み込み元となるパス</param>
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
         /// <param name="scanStack">探索のための</param>
-        private IEnumerable<IDataWriter> TraversalImportNode(IDataReader? reader, IDataWriter? writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
+        private IEnumerable<IDataWriter> TraversalImportNode(IDataReader? reader, IDataWriter writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
         {
             var type = element.Attribute("type")?.Value;
 
@@ -805,11 +805,11 @@ namespace CsvToBinary.Xml
         /// <param name="entry">トラバーサルのエントリポイントとなるXML</param>
         /// <param name="combined">entryに対して逐次結合されるXML</param>
         /// <param name="globalKey">entryの位置を示すキー</param>
-        public IEnumerable<IDataWriter> Traversal(IDataWriter? writer, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined, string globalKey = "")
+        public IEnumerable<IDataWriter> Traversal(IDataWriter writer, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined, string globalKey = "")
         {
             var root = entry.Item2.Document.Root;
             // 書き込み終了の通知が必要でないかを示すフラグ
-            bool noEndtoWriting = writer is not null;
+            bool noEndtoWriting = true;
 
             if (root is not null && root.HasElements)
             {
@@ -832,7 +832,7 @@ namespace CsvToBinary.Xml
                 var combinedXml = new CombinedXml(combined);
 
                 // 書き込み可能な状態にしておく
-                writer?.Push();
+                writer.Push();
                 // writerがnullの場合などwriterの実装依存しない実際の深さ
                 int depth = 1;
 
@@ -853,17 +853,16 @@ namespace CsvToBinary.Xml
                                 TraversalItemsNode(key, sibling, scanStack);
                                 break;
                             case "writer":
-                                if (writer is not null)
+                                // 書き込み終了の通知
+                                while (writer.Depth() != 0)
                                 {
-                                    // 書き込み終了の通知
-                                    while (writer.Depth() != 0)
-                                    {
-                                        writer.WriteChunk();
-                                        writer.Pop();
-                                    }
-                                    yield return writer;
+                                    writer.WriteChunk();
+                                    writer.Pop();
                                 }
+                                // 引数に指定されたwriteの場合は複数回Disposeが呼び出される
+                                yield return writer;
                                 this.TraversalWriteNode(out writer, reader, sibling, combinedXml);
+                                noEndtoWriting = false;
                                 // 書き込み開始のために深さの数だけスタックにpushする
                                 for (int i = 0; i < depth; ++i)
                                 {
@@ -911,19 +910,19 @@ namespace CsvToBinary.Xml
                                 if (parent.Attribute("seq")?.Value != "0")
                                 {
                                     // 2回目以降のループの終端の場合は書き出す
-                                    writer?.WriteChunk();
+                                    writer.WriteChunk();
                                 }
                                 else
                                 {
                                     // 初回のループ実施後はスタックする
-                                    writer?.Push();
+                                    writer.Push();
                                     ++depth;
                                 }
                                 if (!repeatStack.Peek().Next())
                                 {
                                     // ループ条件を満たさないとき
                                     repeatStack.Pop();
-                                    writer?.Pop();
+                                    writer.Pop();
                                     --depth;
                                     
                                     if (repeatStack.Count != 0 && !parent.ElementsAfterSelf().Any() && parent.Parent!.Name.LocalName == "repeat")
@@ -939,16 +938,13 @@ namespace CsvToBinary.Xml
                     }
                 }
 
-                if (writer is not null)
+                // 書き込み終了の通知
+                writer.WriteChunk();
+                writer.Pop();
+                // --depth;
+                if (!noEndtoWriting)
                 {
-                    // 書き込み終了の通知
-                    writer.WriteChunk();
-                    writer.Pop();
-                    // --depth;
-                    if (!noEndtoWriting)
-                    {
-                        yield return writer;
-                    }
+                    yield return writer;
                 }
             }
         }

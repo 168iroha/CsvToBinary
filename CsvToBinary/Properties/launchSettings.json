@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "CsvToBinary": {
+      "commandName": "Project",
+      "commandLineArgs": " -csv data.csv -xml format.xml -csv subdata.csv -xml subformat.xml",
+      "workingDirectory": "C:\\Users\\168ir\\program\\source\\repos\\168iroha\\CsvToBinary\\CsvToBinary\\bin\\Release\\net8.0"
+    }
+  }
+}
