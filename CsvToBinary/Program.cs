@@ -222,7 +222,10 @@ class Program
             using var stringWriter = new CsvToBinary.Data.StringWriter(new MemoryStream(), xmlToBinary);
             foreach (var writer in xmlTraverser.Traversal(stringWriter, entry, combined)) using (writer)
             {
-                Console.WriteLine($"{++cnt}件目のデータ出力完了");
+                if (!ReferenceEquals(writer, stringWriter))
+                {
+                    Console.WriteLine($"{++cnt}件目のデータ出力完了");
+                }
             }
             Console.WriteLine("データ出力完了");
         }

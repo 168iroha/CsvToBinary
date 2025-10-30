@@ -150,6 +150,8 @@
                 <xs:enumeration value="decimal"/><!-- 文字列を10進数文字列と解釈 -->
                 <xs:enumeration value="utf-8"/><!-- 文字列をUTF-8と解釈 -->
                 <xs:enumeration value="utf-16"/><!-- 文字列をUTF-16LEと解釈 -->
+                <xs:enumeration value="utf-16le"/><!-- 文字列をUTF-16LEと解釈 -->
+                <xs:enumeration value="utf-16be"/><!-- 文字列をUTF-16BEと解釈 -->
                 <xs:enumeration value="shift-jis"/><!-- 文字列をShift-JISと解釈 -->
               </xs:restriction>
             </xs:simpleType>

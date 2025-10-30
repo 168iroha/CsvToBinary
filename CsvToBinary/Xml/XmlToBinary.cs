@@ -65,7 +65,8 @@ namespace CsvToBinary.Xml
                 "decimal" => ConvertToBytes.FromDecimal(str, bytes),
                 "utf-8" => Encoding.UTF8.GetBytes(str),
                 "utf-16" => Encoding.Unicode.GetBytes(str),
-                // .NET Coreでは適宜拡張をインストールする必要がある
+                "utf-16le" => Encoding.Unicode.GetBytes(str),
+                "utf-16be" => Encoding.BigEndianUnicode.GetBytes(str),
                 "shift-jis" => Encoding.GetEncoding(932).GetBytes(str),
                 // デフォルトでUTF-8によるバイナリ列を利用
                 _ => Encoding.UTF8.GetBytes(str)
