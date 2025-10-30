@@ -218,7 +218,9 @@ class Program
             int cnt = 0;
             // 読み込み可能な状態にしておく
             entry.Item1?.ReadChunk();
-            foreach (var writer in xmlTraverser.Traversal(null, entry, combined)) using (writer)
+            // デフォルトの書き込み先
+            using var stringWriter = new CsvToBinary.Data.StringWriter(new MemoryStream(), xmlToBinary);
+            foreach (var writer in xmlTraverser.Traversal(stringWriter, entry, combined)) using (writer)
             {
                 Console.WriteLine($"{++cnt}件目のデータ出力完了");
             }
