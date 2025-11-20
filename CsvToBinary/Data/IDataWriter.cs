@@ -10,7 +10,8 @@ namespace CsvToBinary.Data
         /// <summary>
         /// 処理単位のデータを書き込む
         /// </summary>
-        public void WriteChunk();
+        /// <param name="cnt">0以上のときはループ終端時の書き込み契機によるループカウント</param>
+        public void WriteChunk(int cnt);
 
         /// <summary>
         /// 書き込んだChunkをスタックにPushする

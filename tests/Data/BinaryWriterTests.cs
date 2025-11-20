@@ -36,7 +36,7 @@ namespace tests.Data
                 switch (command)
                 {
                     case COM_WRITE_CHUNK:
-                        writer.WriteChunk();
+                        writer.WriteChunk(-1);
                         break;
                     case COM_PUSH:
                         writer.Push();

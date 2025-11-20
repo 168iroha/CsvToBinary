@@ -833,8 +833,6 @@ namespace CsvToBinary.Xml
 
                 // 書き込み可能な状態にしておく
                 writer.Push();
-                // writerがnullの場合などwriterの実装依存しない実際の深さ
-                int depth = 1;
 
                 while (scanStack.Count > 0)
                 {
@@ -854,9 +852,10 @@ namespace CsvToBinary.Xml
                                 break;
                             case "writer":
                                 // 書き込み終了の通知
+                                int depth = writer.Depth();
                                 while (writer.Depth() != 0)
                                 {
-                                    writer.WriteChunk();
+                                    writer.WriteChunk(-1);
                                     writer.Pop();
                                 }
                                 // 引数に指定されたwriteの場合は複数回Disposeが呼び出される
@@ -864,9 +863,11 @@ namespace CsvToBinary.Xml
                                 this.TraversalWriteNode(out writer, reader, sibling, combinedXml);
                                 noEndtoWriting = false;
                                 // 書き込み開始のために深さの数だけスタックにpushする
-                                for (int i = 0; i < depth; ++i)
+                                writer.Push();
+                                for (int i = 1; i < depth; ++i)
                                 {
                                     writer.Push();
+                                    writer.WriteChunk(0);
                                 }
                                 break;
                             case "import":
@@ -877,6 +878,8 @@ namespace CsvToBinary.Xml
                                 break;
                             case "repeat":
                                 this.TraversalRepeatNode(reader, key, sibling, combinedXml, scanStack, repeatStack);
+                                // 初回のループの評価のスコープを与えるためにスタックする
+                                writer.Push();
                                 break;
                             case "nop":
                                 break;
@@ -907,23 +910,16 @@ namespace CsvToBinary.Xml
                             var parent = target.Parent!;
                             if (parent.Name.LocalName == "repeat")
                             {
-                                if (parent.Attribute("seq")?.Value != "0")
-                                {
-                                    // 2回目以降のループの終端の場合は書き出す
-                                    writer.WriteChunk();
-                                }
-                                else
-                                {
-                                    // 初回のループ実施後はスタックする
-                                    writer.Push();
-                                    ++depth;
-                                }
+                                // ループ終端毎にループ内容を書き出す
+                                var seqNode = parent.Attribute("seq");
+                                var cnt = seqNode is not null ? int.Parse(seqNode.Value) : 0;
+                                writer.WriteChunk(cnt);
+
                                 if (!repeatStack.Peek().Next())
                                 {
                                     // ループ条件を満たさないとき
                                     repeatStack.Pop();
                                     writer.Pop();
-                                    --depth;
                                     
                                     if (repeatStack.Count != 0 && !parent.ElementsAfterSelf().Any() && parent.Parent!.Name.LocalName == "repeat")
                                     {
@@ -939,9 +935,8 @@ namespace CsvToBinary.Xml
                 }
 
                 // 書き込み終了の通知
-                writer.WriteChunk();
+                writer.WriteChunk(-1);
                 writer.Pop();
-                // --depth;
                 if (!noEndtoWriting)
                 {
                     yield return writer;
@@ -1003,7 +998,7 @@ namespace CsvToBinary.Xml
                     sibling = nextSibling as XElement;
                 }
             }
-            writer.WriteChunk();
+            writer.WriteChunk(-1);
         }
     }
 }
