@@ -434,7 +434,7 @@ namespace tests.Xml
             using var stream = new MemoryStream();
             var xmlToBinary = new XmlToBinary(new StubTransformerControl(), new StubCounter(), new StubXPathResolver(), []);
 
-            // パディングを右から適用するようにしてXMLの要素を書き込み
+            // パディングを左から適用するようにしてXMLの要素を書き込み
             xmlTree.SetAttributeValue("lpadding", padding);
             xmlToBinary.Write(stream, xmlTree);
             var bytes = stream.ReadAll();
@@ -445,6 +445,32 @@ namespace tests.Xml
             // パディングの検査
             var paddingBytes = Enumerable.Repeat<byte>(Encoding.UTF8.GetBytes(padding)[0], length - targets.Length).ToArray();
             CollectionAssert.AreEqual(bytes[..(length - targets.Length)], paddingBytes);
+        }
+
+        [TestMethod]
+        public void 明示的な左からのパディングを指定した幅を超過したテキスト要素の出力()
+        {
+            var item = "123456";
+            // 簡単のために1バイト文字を指定(UTF-8)
+            var padding = "0";
+            var length = 3;
+
+            var xmlTree = new XElement("item",
+                new XElement("value", item)
+            );
+            xmlTree.SetAttributeValue("bytes", length);
+
+            using var stream = new MemoryStream();
+            var xmlToBinary = new XmlToBinary(new StubTransformerControl(), new StubCounter(), new StubXPathResolver(), []);
+
+            // パディングを左から適用するようにしてXMLの要素を書き込み
+            xmlTree.SetAttributeValue("lpadding", padding);
+            xmlToBinary.Write(stream, xmlTree);
+            var bytes = stream.ReadAll();
+            var targets = Encoding.UTF8.GetBytes(item);
+            // 通常は末尾から末尾から切りつけられるがlpadding指定時は先頭から切り詰められることの確認
+            Assert.AreEqual(bytes.Length, length);
+            CollectionAssert.AreEqual(bytes, targets[(targets.Length - length)..]);
         }
 
         [TestMethod]

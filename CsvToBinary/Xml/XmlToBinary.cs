@@ -311,7 +311,15 @@ namespace CsvToBinary.Xml
                             else
                             {
                                 // 切り詰めて出力
-                                stream.Write(buffer, 0, bytes.Value);
+                                if (direction == PaddingDirection.Left)
+                                {
+                                    // left-paddingのときは先頭文字から切り詰める
+                                    stream.Write(buffer, buffer.Length - bytes.Value, bytes.Value);
+                                }
+                                else
+                                {
+                                    stream.Write(buffer, 0, bytes.Value);
+                                }
                             }
                         }
                     }
