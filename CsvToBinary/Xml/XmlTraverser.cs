@@ -769,7 +769,8 @@ namespace CsvToBinary.Xml
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
         /// <param name="scanStack">探索のためのスタック</param>
         /// <param name="repeatStack">ループのためのスタック</param>
-        private void TraversalRepeatNode(
+        /// <returns>ループの開始に成功したときにtrue</returns>
+        private bool TraversalRepeatNode(
             IDataReader? reader,
             string key,
             XElement element,
@@ -794,8 +795,12 @@ namespace CsvToBinary.Xml
             };
 
             // 初期状態の構築
-            repeatObj.Next();
-            repeatStack.Push(repeatObj);
+            var ret = repeatObj.Next();
+            if (ret)
+            {
+                repeatStack.Push(repeatObj);
+            }
+            return ret;
         }
 
         /// <summary>
@@ -877,9 +882,11 @@ namespace CsvToBinary.Xml
                                 }
                                 break;
                             case "repeat":
-                                this.TraversalRepeatNode(reader, key, sibling, combinedXml, scanStack, repeatStack);
-                                // 初回のループの評価のスコープを与えるためにスタックする
-                                writer.Push();
+                                if (this.TraversalRepeatNode(reader, key, sibling, combinedXml, scanStack, repeatStack))
+                                {
+                                    // 初回のループの評価のスコープを与えるためにスタックする
+                                    writer.Push();
+                                }
                                 break;
                             case "nop":
                                 break;
