@@ -1,7 +1,7 @@
 ﻿using CsvToBinary.Data;
+using CsvToBinary.Xml;
 using System.Text;
 using System.Xml.Linq;
-using CsvToBinary.Xml;
 using StringWriter = CsvToBinary.Data.StringWriter;
 
 namespace tests.Xml
@@ -199,7 +199,7 @@ namespace tests.Xml
     }
 
     /// <summary>
-    /// IDataReaderについてのスタブ
+    /// IDataWriterについてのスタブ(任意のデータをCSVとして書き込むものに相当)
     /// </summary>
     /// <param name="xmlToBinary">XMLをStreamへ書き出す処理が記載されたインスタンス</param>
     public class StubDataWriter(IXmlToBinary xmlToBinary) : IDataWriter
@@ -236,23 +236,33 @@ namespace tests.Xml
 
         public void SetData(string key, XElement item)
         {
+            this.SetData(key, this.xmlToBinary.GetString(item));
+        }
+
+        public void SetData(string key, string item)
+        {
             if (!this.columnMap.TryGetValue(key, out int index))
             {
                 // ヘッダ情報の追加
                 index = this.columnMap.Count;
                 this.columnMap[key] = index;
             }
+            this.SetData(index, item);
+        }
+
+        public void SetData(int index, string item)
+        {
             if (!this.stack.TryPeek(out List<string>? peek))
             {
                 throw new InvalidOperationException("書き込み不可");
             }
             if (peek.Count <= index)
             {
-                // 要素が足りないときは追加
+                // 書き込み先のカラムの分の配列を確保していないときは書き込み先の分を追加
                 peek.AddRange(Enumerable.Repeat("", index + 1 - peek.Count));
             }
             // データの書き込み
-            peek[index] = this.xmlToBinary.GetString(item);
+            peek[index] = item;
         }
 
         public void Pop()
@@ -282,45 +292,59 @@ namespace tests.Xml
 
         public void Push()
         {
-            ++this.nestLevel;
-            this.stack.Push([]);
+            // 書き込み可能な状態にする場合に限り実行
+            if (this.nestLevel == 0)
+            {
+                ++this.nestLevel;
+                this.stack.Push([]);
+            }
         }
 
-        public void WriteChunk()
+        public void WriteChunk(int cnt)
         {
             if (this.stack.TryPeek(out List<string>? peek))
             {
                 List<List<string>> targetArray;
-                if (this.nestLevel > 1)
+                if (cnt != 0)
                 {
-                    // ネストの深さが深いときは一時的なデータ列へ書き込み
-                    var size = this.tempDataArray.Count;
-                    if (size < this.nestLevel - 1)
+                    if (this.nestLevel > 1)
                     {
-                        // 書き込み可能だがまだ書き込んでいないデータの配列サイズが不足しているときは拡張
-                        this.tempDataArray.AddRange(Enumerable.Repeat<List<List<string>>>([], this.nestLevel - 1 - size));
+                        // ネストの深さが深いときは一時的なデータ列へ書き込み
+                        var size = this.tempDataArray.Count;
+                        if (size < this.nestLevel - 1)
+                        {
+                            // 書き込み可能だがまだ書き込んでいないデータの配列サイズが不足しているときは拡張
+                            this.tempDataArray.AddRange(Enumerable.Repeat<List<List<string>>>([], this.nestLevel - 1 - size));
+                        }
+                        targetArray = this.tempDataArray[this.nestLevel - 2];
                     }
-                    targetArray = this.tempDataArray[this.nestLevel - 2];
+                    else
+                    {
+                        // ネストが最低限の場合は直接書き出す
+                        targetArray = this.dataArray;
+                    }
+                    targetArray.Add(peek);
+
+                    // this.tempDataArrayのより深いところへの書き込みをマージする
+                    for (int i = this.nestLevel - 1; i < this.tempDataArray.Count; ++i)
+                    {
+                        targetArray.AddRange(this.tempDataArray[i]);
+                    }
+                    if (this.tempDataArray.Count > this.nestLevel - 1)
+                    {
+                        this.tempDataArray.RemoveRange(this.nestLevel - 1, this.tempDataArray.Count - (this.nestLevel - 1));
+                    }
+
+                    // スタックへの書き込み状況をリセットする
+                    this.stack.Pop();
+                    this.stack.Push([]);
                 }
                 else
                 {
-                    // ネストが最低限の場合は直接書き出す
-                    targetArray = this.dataArray;
+                    // 初回のループ時はの書き込みはループ前のものと統合するためこのタイミングでスタックする
+                    ++this.nestLevel;
+                    this.stack.Push([]);
                 }
-                targetArray.Add(peek);
-
-                // this.tempDataArrayのより深いところへの書き込みをマージする
-                for (int i = this.nestLevel - 1; i < this.tempDataArray.Count; ++i)
-                {
-                    targetArray.AddRange(this.tempDataArray[i]);
-                }
-                if (this.tempDataArray.Count > this.nestLevel - 1) {
-                    this.tempDataArray.RemoveRange(this.nestLevel - 1, this.tempDataArray.Count - (this.nestLevel - 1));
-                }
-
-                // スタックへの書き込み状況をリセットする
-                this.stack.Pop();
-                this.stack.Push([]);
             }
         }
 

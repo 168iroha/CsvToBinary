@@ -26,7 +26,9 @@ namespace CsvToBinary.Data
         /// <summary>
         /// 処理単位のデータを書き込む
         /// </summary>
-        public void WriteChunk() {
+        /// <param name="cnt">0以上のときはループ終端時の書き込み契機によるループカウント</param>
+        public void WriteChunk(int cnt)
+        {
             // 遅延評価の実行
             var stack = this.lazyEvalStack.Peek();
             while (stack.Count > 0)
@@ -41,14 +43,16 @@ namespace CsvToBinary.Data
         /// <summary>
         /// 書き込んだChunkをスタックにPushする
         /// </summary>
-        public void Push() {
+        public void Push()
+        {
             this.lazyEvalStack.Push([]);
         }
 
         /// <summary>
         /// 書き込んだChunkをスタックからPopする
         /// </summary>
-        public void Pop() {
+        public void Pop()
+        {
             this.lazyEvalStack.Pop();
         }
 
