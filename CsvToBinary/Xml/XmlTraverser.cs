@@ -493,7 +493,7 @@ namespace CsvToBinary.Xml
         /// <returns>読み込み結果</returns>
         private XmlDocumentWithPath ImportXml(string target, string relative)
         {
-            var parentPath = Path.GetDirectoryName(relative);
+            var parentPath = string.IsNullOrEmpty(relative) ? null : Path.GetDirectoryName(relative);
             // 相対パスなら実行ファイルの位置を基準としてパスを構築して読み込む
             var path = Path.GetFullPath(
                 Path.IsPathRooted(target) ? target :
