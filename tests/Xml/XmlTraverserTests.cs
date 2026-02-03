@@ -861,5 +861,347 @@ namespace tests.Xml
                 }
             }
         }
+
+        [TestMethod]
+        public void 実行されないループでスタックが不整合にならないことの確認()
+        {
+            var name1 = "name1";
+            var name2 = "name2";
+            var item1 = "あ";
+            var item2 = "い";
+            // データの構築のためのXMLの定義
+            // max=0のループは実行されない
+            var xmlTree = new XDocument(
+                new XElement("format",
+                    new XElement(
+                        "item",
+                        new XAttribute("name", name1)
+                    ),
+                    // max=0のため実行されないループ
+                    new XElement(
+                        "repeat",
+                        new XAttribute("max", "0"),
+                        new XAttribute("name", "empty_loop"),
+                        new XElement(
+                            "item",
+                            new XAttribute("name", "never_executed")
+                        )
+                    ),
+                    // ループの後にある要素が正しく処理されることを確認
+                    new XElement(
+                        "item",
+                        new XAttribute("name", name2)
+                    )
+                )
+            );
+            // XMLにディスパッチするデータの定義
+            var reader = new StubDataReader(
+                [name1, name2],
+                [[item1, item2]]
+            );
+            // 読み込み可能な状態にしておく
+            reader.ReadChunk();
+
+            var xmlToBinary = new StubXmlToBinary();
+            var xmlTraverser = new XmlTraverser(
+                new StubXPathResolver(),
+                xmlToBinary,
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                []
+            );
+
+            using var writer = new StubDataWriter(xmlToBinary);
+
+            // 例外が発生しないことを確認
+            _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
+
+            // readerにより設定される値の比較
+            Assert.IsTrue(reader.Included(writer));
+            // スタックの深さが正常であることの確認(深さが不整合だと例外が発生するはず)
+            Assert.AreEqual(writer.Depth(), 0);
+        }
+
+        [TestMethod]
+        public void 複数回のTraversal呼び出しでunrollingが正しく動作することの確認()
+        {
+            var itemsName1 = "items1";
+            var name1 = "name1";
+            var item1 = "あ";
+            var item2 = "い";
+            var maxCount = 3;
+            // データの構築のためのXMLの定義
+            var xmlTree = new XDocument(
+                new XElement("format",
+                    new XElement(
+                        "repeat",
+                        new XAttribute("max", maxCount),
+                        new XAttribute("name", itemsName1),
+                        new XAttribute("unrolling", "true"),
+                        new XElement(
+                            "item",
+                            new XAttribute("name", name1)
+                        )
+                    )
+                )
+            );
+
+            var xmlToBinary = new StubXmlToBinary();
+            var xmlTraverser = new XmlTraverser(
+                new StubXPathResolver(),
+                xmlToBinary,
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                []
+            );
+
+            // 1回目のTraversal
+            var reader1 = new StubDataReader(
+                [$"{itemsName1}/{name1}"],
+                [[item1]]
+            );
+            reader1.ReadChunk();
+            using var writer1 = new StubDataWriter(xmlToBinary);
+            _ = xmlTraverser.Traversal(writer1, (reader1, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
+            Assert.AreEqual(writer1.DataArray.Count, maxCount);
+
+            // 2回目のTraversal（同じXMLを再利用）
+            var reader2 = new StubDataReader(
+                [$"{itemsName1}/{name1}"],
+                [[item2]]
+            );
+            reader2.ReadChunk();
+            using var writer2 = new StubDataWriter(xmlToBinary);
+            // 2回目の呼び出しでも正しく動作することを確認（repeat-idが重複付与されない）
+            _ = xmlTraverser.Traversal(writer2, (reader2, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
+            Assert.AreEqual(writer2.DataArray.Count, maxCount);
+
+            // 2回目の結果が正しいことを確認（item2が書き込まれている）
+            for (int i = 0; i < maxCount; ++i)
+            {
+                Assert.AreEqual(writer2.DataArray[i][0], item2);
+            }
+        }
+
+        [TestMethod]
+        public void unrolling有効時のノード走査が正しく行われることの確認()
+        {
+            var itemsName1 = "items1";
+            var name1 = "name1";
+            var name2 = "name2";
+            var item1 = "あ";
+            var item2 = "い";
+            var maxCount = 3;
+            // データの構築のためのXMLの定義
+            var xmlTree = new XDocument(
+                new XElement("format",
+                    new XElement(
+                        "repeat",
+                        new XAttribute("max", maxCount),
+                        new XAttribute("name", itemsName1),
+                        new XAttribute("unrolling", "true"),
+                        new XElement(
+                            "item",
+                            new XAttribute("name", name1)
+                        )
+                    ),
+                    // repeatの後にある要素が正しく処理されることを確認
+                    new XElement(
+                        "item",
+                        new XAttribute("name", name2)
+                    )
+                )
+            );
+            // XMLにディスパッチするデータの定義
+            var reader = new StubDataReader(
+                [$"{itemsName1}/{name1}", name2],
+                [[item1, item2]]
+            );
+            // 読み込み可能な状態にしておく
+            reader.ReadChunk();
+
+            var xmlToBinary = new StubXmlToBinary();
+            var xmlTraverser = new XmlTraverser(
+                new StubXPathResolver(),
+                xmlToBinary,
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                []
+            );
+
+            using var writer = new StubDataWriter(xmlToBinary);
+
+            _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
+
+            // ループが正しく実行されていることの確認
+            Assert.AreEqual(writer.DataArray.Count, maxCount);
+            // ループ内の要素が正しく書き込まれていることの確認
+            for (int i = 0; i < maxCount; ++i)
+            {
+                Assert.AreEqual(writer.DataArray[i][0], item1);
+            }
+            // ループ後の要素が正しく書き込まれていることの確認（初回のみ）
+            Assert.AreEqual(writer.DataArray[0][1], item2);
+        }
+
+        [TestMethod]
+        public void 外側fetchループと内側回数指定ループの組み合わせでレコードが読み飛ばされないことの確認()
+        {
+            var outerName = "outer";
+            var innerName = "inner";
+            var name1 = "name1";
+            var name2 = "name2";
+            var item1 = "あ";
+            var item2 = "い";
+            var item3 = "う";
+            var innerMax = 2;
+            // データの構築のためのXMLの定義
+            // 外側のfetch=trueループの中に回数指定ループがある構造
+            var xmlTree = new XDocument(
+                new XElement("format",
+                    new XElement(
+                        "repeat",
+                        new XAttribute("fetch", "true"),
+                        new XAttribute("name", outerName),
+                        new XElement(
+                            "item",
+                            new XAttribute("name", name1)
+                        ),
+                        // 内側の回数指定ループ
+                        new XElement(
+                            "repeat",
+                            new XAttribute("max", innerMax),
+                            new XAttribute("name", innerName),
+                            new XElement(
+                                "item",
+                                new XAttribute("name", name2)
+                            )
+                        )
+                    )
+                )
+            );
+            // XMLにディスパッチするデータの定義
+            // 3レコード用意し、全て処理されることを確認
+            var reader = new StubDataReader(
+                [$"{outerName}/{name1}", $"{outerName}/{innerName}/{name2}"],
+                [
+                    [item1, item1],
+                    [item2, item2],
+                    [item3, item3]
+                ]
+            );
+            // 読み込み可能な状態にしておく
+            reader.ReadChunk();
+
+            var xmlToBinary = new StubXmlToBinary();
+            var xmlTraverser = new XmlTraverser(
+                new StubXPathResolver(),
+                xmlToBinary,
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                []
+            );
+
+            using var writer = new StubDataWriter(xmlToBinary);
+
+            _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
+
+            // 外側ループが3回、内側ループが各2回なので、合計3*2=6レコードとなる
+            // (ただし内側は同じレコードを2回処理する)
+            Assert.AreEqual(writer.DataArray.Count, reader.RowCount * innerMax);
+
+            // 各外側ループで正しいレコードが処理されていることの確認
+            // レコードが読み飛ばされていないことの確認
+            Assert.AreEqual(writer.DataArray[0][0], item1);
+            Assert.AreEqual(writer.DataArray[2][0], item2);
+            Assert.AreEqual(writer.DataArray[4][0], item3);
+        }
+
+        [TestMethod]
+        public void dynamicインポートで読み込んだXML内の静的インポートが解決されることの確認()
+        {
+            var name1 = "name1";
+            var name2 = "name2";
+            var item1 = "あ";
+            var item2 = "い";
+
+            // 静的にインポートされるXML（type='xml'で読み込まれる）
+            var staticImportedXml = new XDocument(
+                new XElement("format",
+                    new XElement(
+                        "item",
+                        new XAttribute("name", name2)
+                    )
+                )
+            );
+
+            // 動的にインポートされるXML（この中で静的インポートを行う）
+            var dynamicImportedXml = new XDocument(
+                new XElement("format",
+                    new XElement(
+                        "item",
+                        new XAttribute("name", name1)
+                    ),
+                    // 静的インポート（type='xml'でtarget属性を指定）
+                    new XElement(
+                        "import",
+                        new XAttribute("type", "xml"),
+                        new XAttribute("target", "static.xml")
+                    )
+                )
+            );
+
+            // メインのXML
+            var xmlTree = new XDocument(
+                new XElement("format",
+                    // 動的インポート（type='dynamic'でtarget属性を指定）
+                    new XElement(
+                        "import",
+                        new XAttribute("type", "dynamic"),
+                        new XAttribute("target", "dynamic.xml")
+                    )
+                )
+            );
+
+            // XMLにディスパッチするデータの定義
+            var reader = new StubDataReader(
+                [name1, name2],
+                [[item1, item2]]
+            );
+            // 読み込み可能な状態にしておく
+            reader.ReadChunk();
+
+            var xmlToBinary = new StubXmlToBinary();
+            var xmlTraverser = new XmlTraverser(
+                new StubXPathResolver(),
+                xmlToBinary,
+                path =>
+                {
+                    // パスに応じて適切なXMLを返す(実際のパスはフルパスになるためファイル名で判定)
+                    if (path.EndsWith("dynamic.xml"))
+                    {
+                        return dynamicImportedXml;
+                    }
+                    else if (path.EndsWith("static.xml"))
+                    {
+                        return staticImportedXml;
+                    }
+                    return new XDocument();
+                },
+                (type, name, xmlToBinary) => new StringWriter(new MemoryStream(), xmlToBinary),
+                []
+            );
+
+            // BinaryWriterを使用してテスト（StubDataWriterはdynamic importの再帰呼び出しに対応していないため）
+            using var stream = new MemoryStream();
+            using var writer = new CsvToBinary.Data.BinaryWriter(stream, xmlToBinary);
+
+            _ = xmlTraverser.Traversal(writer, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
+
+            // 動的インポートで読み込んだXML内の要素と、その中の静的インポートで読み込んだ要素の両方が処理されていることの確認
+            var bytes = stream.ReadAll();
+            var expected = Encoding.UTF8.GetBytes(item1 + item2);
+            CollectionAssert.AreEqual(bytes, expected);
+        }
     }
 }

@@ -807,5 +807,53 @@ namespace tests.Xml
             xmlToBinary.Write(stream, xmlTree);
             Assert.AreEqual(stream.Length, 0);
         }
+
+        [TestMethod]
+        public void UTF16リトルエンディアンでのテキスト要素の出力()
+        {
+            var item = "あいうえお";
+
+            var xmlTree = new XElement("item",
+                new XElement("value", item)
+            );
+            // UTF-16LEでバイナリを出力する
+            xmlTree.SetAttributeValue("encoding", "utf-16le");
+
+            using var stream = new MemoryStream();
+            var xmlToBinary = new XmlToBinary(new StubTransformerControl(), new StubCounter(), new StubXPathResolver(), []);
+
+            // XMLの要素を書き込み
+            xmlToBinary.Write(stream, xmlTree);
+            var bytes = stream.ReadAll();
+            // UTF-16LEはリトルエンディアン(Encoding.Unicode)と同じ
+            CollectionAssert.AreEqual(bytes, Encoding.Unicode.GetBytes(item));
+            // リトルエンディアンの確認: 先頭文字「あ」(U+3042)は42 30の順になる
+            Assert.AreEqual(bytes[0], (byte)0x42);
+            Assert.AreEqual(bytes[1], (byte)0x30);
+        }
+
+        [TestMethod]
+        public void UTF16ビッグエンディアンでのテキスト要素の出力()
+        {
+            var item = "あいうえお";
+
+            var xmlTree = new XElement("item",
+                new XElement("value", item)
+            );
+            // UTF-16BEでバイナリを出力する
+            xmlTree.SetAttributeValue("encoding", "utf-16be");
+
+            using var stream = new MemoryStream();
+            var xmlToBinary = new XmlToBinary(new StubTransformerControl(), new StubCounter(), new StubXPathResolver(), []);
+
+            // XMLの要素を書き込み
+            xmlToBinary.Write(stream, xmlTree);
+            var bytes = stream.ReadAll();
+            // UTF-16BEはビッグエンディアン
+            CollectionAssert.AreEqual(bytes, Encoding.BigEndianUnicode.GetBytes(item));
+            // ビッグエンディアンの確認: 先頭文字「あ」(U+3042)は30 42の順になる
+            Assert.AreEqual(bytes[0], (byte)0x30);
+            Assert.AreEqual(bytes[1], (byte)0x42);
+        }
     }
 }
