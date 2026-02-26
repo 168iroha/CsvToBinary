@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Xml.XPath;
@@ -10,6 +11,25 @@ namespace CsvToBinary.BuiltIn
     /// </summary>
     public class CharaTransformer : ITransformer
     {
+        /// <summary>
+        /// 指定したエンコーディングの文字列からEncodingを取得する
+        /// </summary>
+        /// <param name="encoding">エンコーディングを示す文字列</param>
+        /// <returns>Encodingオブジェクト</returns>
+        static public Encoding GetEncoding(string? encoding)
+        {
+            return encoding switch
+            {
+                "utf-8" => Encoding.UTF8,
+                "utf-16" => Encoding.Unicode,
+                "utf-16le" => Encoding.Unicode,
+                "utf-16be" => Encoding.BigEndianUnicode,
+                "shift-jis" => Encoding.GetEncoding(932),
+                // デフォルトでUTF-8を利用
+                _ => Encoding.UTF8
+            };
+        }
+
         /// <summary>
         /// 1つの単純文字変換結果の取得のためのインターフェース
         /// </summary>
@@ -47,13 +67,18 @@ namespace CsvToBinary.BuiltIn
         /// 1つのファイルからの単純文字変換結果の取得のためのクラス
         /// </summary>
         /// <param name="to">変換先の文字列を示すパス</param>
+        /// <param name="encoding">toのエンコーディング</param>
         /// <param name="inst">親クラスのインスタンス</param>
-        private readonly struct CharaMapFromFile(string to, CharaTransformer inst) : ICharaMap
+        private readonly struct CharaMapFromFile(string to, Encoding? encoding, CharaTransformer inst) : ICharaMap
         {
             /// <summary>
             /// 変換先の文字列を示すパス(相対パスなら実行ファイルの位置を基準としてパスを構築)
             /// </summary>
             private readonly string to = Path.IsPathRooted(to) ? to : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, to);
+            /// <summary>
+            /// toのエンコーディング
+            /// </summary>
+            private readonly Encoding? encoding = encoding;
             /// <summary>
             /// 親クラスのインスタンス
             /// </summary>
@@ -65,7 +90,7 @@ namespace CsvToBinary.BuiltIn
             /// <returns>変換結果の文字列</returns>
             public readonly string Get()
             {
-                return this.inst.LoadFile(this.to);
+                return this.inst.LoadFile(this.to, this.encoding);
             }
         }
 
@@ -87,7 +112,7 @@ namespace CsvToBinary.BuiltIn
         /// 1つのファイルからの正規表現を基にした単純文字変換結果の取得のためのクラス
         /// </summary>
         /// <param name="regex">変換元のパターンマッチングを行う正規表現</param>
-        /// <param name="to">正規表現の結果の埋め込みが可能な変換結果の文字列</param>
+        /// <param name="to">正規表現の結果の埋め込みが可能な変換結果のパス</param>
         private readonly struct RegexCharaMap(Regex regex, string to) : IRegexCharaMap
         {
             /// <summary>
@@ -95,7 +120,7 @@ namespace CsvToBinary.BuiltIn
             /// </summary>
             private readonly Regex regex = regex;
             /// <summary>
-            /// 正規表現の結果の埋め込みが可能な変換結果の文字列
+            /// 正規表現の結果の埋め込みが可能な変換結果のパス
             /// </summary>
             private readonly string to = to;
 
@@ -122,16 +147,24 @@ namespace CsvToBinary.BuiltIn
         /// <summary>
         /// 1つの正規表現を基にした単純文字変換結果の取得のためのクラス
         /// </summary>
-        private readonly struct RegexCharaMapFromFile(Regex regex, string to, CharaTransformer inst) : IRegexCharaMap
+        /// <param name="regex">変換元のパターンマッチングを行う正規表現</param>
+        /// <param name="to">正規表現の結果の埋め込みが可能な変換結果のパス</param>
+        /// <param name="encoding">toのエンコーディング</param>
+        /// <param name="inst">親クラスのインスタンス</param>
+        private readonly struct RegexCharaMapFromFile(Regex regex, string to, Encoding? encoding, CharaTransformer inst) : IRegexCharaMap
         {
             /// <summary>
             /// 変換元のパターンマッチングを行う正規表現
             /// </summary>
             private readonly Regex regex = regex;
             /// <summary>
-            /// 正規表現の結果の埋め込みが可能な変換結果の文字列
+            /// 正規表現の結果の埋め込みが可能な変換結果のパス
             /// </summary>
             private readonly string to = to;
+            /// <summary>
+            /// toのエンコーディング
+            /// </summary>
+            private readonly Encoding? encoding = encoding;
             /// <summary>
             /// 親クラスのインスタンス
             /// </summary>
@@ -152,7 +185,7 @@ namespace CsvToBinary.BuiltIn
                     // 変換先のパスの構築(相対パスなら実行ファイルの位置を基準としてパスを構築)
                     var toFile = string.Format(this.to, [.. m.Groups]);
                     var toFile2 = Path.IsPathRooted(toFile) ? toFile : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, toFile);
-                    to = this.inst.LoadFile(toFile2);
+                    to = this.inst.LoadFile(toFile2, this.encoding);
                     return true;
                 }
                 to = null;
@@ -171,7 +204,7 @@ namespace CsvToBinary.BuiltIn
         /// <summary>
         /// 変換結果のテキストを読み込むための関数
         /// </summary>
-        private readonly Func<string, string> stringFunc;
+        private readonly Func<string, Encoding?, string> stringFunc;
         /// <summary>
         /// stringFuncの実行結果に関するキャッシュ
         /// </summary>
@@ -183,15 +216,17 @@ namespace CsvToBinary.BuiltIn
         /// </summary>
         /// <param name="doc">変換規則を定義したXML</param>
         /// <param name="stringFunc">変換結果のテキストを読み込むための関数</param>
-        public CharaTransformer(XDocument doc, Func<string, string> stringFunc) {
+        public CharaTransformer(XDocument doc, Func<string, Encoding?, string> stringFunc) {
             var dict = new SortedDictionary<int, Dictionary<string, ICharaMap>>();
             // 変換規則を定義したXMLを読み込んで変換テーブルを構築する
             foreach (XElement element in doc.XPathSelectElements("/transform/map"))
             {
                 var toAttr = element.Attribute("to");
                 var toFileAttr = element.Attribute("to-file");
+                var toFileEncodingAttr = element.Attribute("to-file-encoding");
                 var fromAttr = element.Attribute("from");
                 var fromRegexAttr = element.Attribute("from-regex");
+                var encoding = toFileEncodingAttr is not null ? GetEncoding(toFileEncodingAttr.Value) : null;
 
                 // 属性の正当性の評価
                 if (fromAttr is null && fromRegexAttr is null)
@@ -218,8 +253,8 @@ namespace CsvToBinary.BuiltIn
                         from,
                         toAttr is not null ?
                         new CharaMap(toAttr.Value) :
-                        new CharaMapFromFile(toFileAttr!.Value, this)
-                    );
+                        new CharaMapFromFile(toFileAttr!.Value, encoding, this)
+                    ); 
                 }
                 else if (fromRegexAttr is not null)
                 {
@@ -229,7 +264,7 @@ namespace CsvToBinary.BuiltIn
                     this.regexMap.Add(
                         toAttr is not null ?
                         new RegexCharaMap(regex, toAttr.Value) :
-                        new RegexCharaMapFromFile(regex, toFileAttr!.Value, this)
+                        new RegexCharaMapFromFile(regex, toFileAttr!.Value, encoding, this)
                     );
                 }
             }
@@ -246,12 +281,13 @@ namespace CsvToBinary.BuiltIn
         /// 変換で利用するテキストファイルの読み込み
         /// </summary>
         /// <param name="path">読み込むファイルパス</param>
+        /// <param name="encoding">エンコーディング</param>
         /// <returns>読み込み結果のテキスト</returns>
-        private string LoadFile(string path)
+        private string LoadFile(string path, Encoding? encoding)
         {
             if (!this.stringCache.TryGetValue(path, out var text))
             {
-                text = this.stringFunc(path);
+                text = this.stringFunc(path, encoding);
                 // 読み込み結果をキャッシュしておく
                 this.stringCache.Add(path, text);
             }

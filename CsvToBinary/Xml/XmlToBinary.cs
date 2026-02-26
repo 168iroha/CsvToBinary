@@ -1,6 +1,5 @@
 ﻿using CsvToBinary.BuiltIn;
 using System.Globalization;
-using System.Text;
 using System.Xml.Linq;
 
 namespace CsvToBinary.Xml
@@ -63,13 +62,7 @@ namespace CsvToBinary.Xml
                 "binary" => ConvertToBytes.FromBinary(str),
                 "hexadecimal" => ConvertToBytes.FromHexadecimal(str),
                 "decimal" => ConvertToBytes.FromDecimal(str, bytes),
-                "utf-8" => Encoding.UTF8.GetBytes(str),
-                "utf-16" => Encoding.Unicode.GetBytes(str),
-                "utf-16le" => Encoding.Unicode.GetBytes(str),
-                "utf-16be" => Encoding.BigEndianUnicode.GetBytes(str),
-                "shift-jis" => Encoding.GetEncoding(932).GetBytes(str),
-                // デフォルトでUTF-8によるバイナリ列を利用
-                _ => Encoding.UTF8.GetBytes(str)
+                _ => CharaTransformer.GetEncoding(encoding).GetBytes(str)
             };
         }
 
