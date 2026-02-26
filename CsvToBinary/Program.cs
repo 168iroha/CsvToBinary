@@ -146,11 +146,19 @@ class Program
                             // 単純文字変換器
                             "chara-map" =>
                             new CharaTransformer(doc,
-                                path =>
+                                (path, encoding) =>
                                 {
-                                    // BOMを確認して適宜Unicode系で読み込む
-                                    using var stream = new StreamReader(path, true);
-                                    return stream.ReadToEnd();
+                                    if (encoding is null)
+                                    {
+                                        // BOMを確認して適宜Unicode系で読み込む
+                                        using var stream = new StreamReader(path, true);
+                                        return stream.ReadToEnd();
+                                    }
+                                    else
+                                    {
+                                        using var stream = new StreamReader(path, encoding);
+                                        return stream.ReadToEnd();
+                                    }
                                 }
                             ),
                             _ => throw new InputDataException($"型[{type}]に対応する変換器は存在しません", doc.Root)
