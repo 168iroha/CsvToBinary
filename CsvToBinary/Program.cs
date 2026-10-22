@@ -148,17 +148,14 @@ class Program
                             new CharaTransformer(doc,
                                 (path, encoding) =>
                                 {
+                                    byte[] data = File.ReadAllBytes(path);
                                     if (encoding is null)
                                     {
-                                        // BOMを確認して適宜Unicode系で読み込む
-                                        using var stream = new StreamReader(path, true);
-                                        return stream.ReadToEnd();
+                                        // エンコーディングの指定がなければバイナリを16進数文字列として返す
+                                        return Convert.ToHexString(data);
                                     }
-                                    else
-                                    {
-                                        using var stream = new StreamReader(path, encoding);
-                                        return stream.ReadToEnd();
-                                    }
+                                    // エンコーディングの指定があれば指定したエンコーディングで解釈した文字列を返す
+                                    return encoding.GetString(data);
                                 }
                             ),
                             _ => throw new InputDataException($"型[{type}]に対応する変換器は存在しません", doc.Root)
