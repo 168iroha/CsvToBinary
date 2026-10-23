@@ -152,7 +152,7 @@ class Program
                                     if (encoding is null)
                                     {
                                         // エンコーディングの指定がなければバイナリを16進数文字列として返す
-                                        return Convert.ToHexString(data);
+                                        return BitConverter.ToString(data).Replace("-", "");
                                     }
                                     // エンコーディングの指定があれば指定したエンコーディングで解釈した文字列を返す
                                     return encoding.GetString(data);
