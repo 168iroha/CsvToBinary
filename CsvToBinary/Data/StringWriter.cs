@@ -27,6 +27,11 @@ namespace CsvToBinary.Data
         private readonly IXmlToBinary xmlToBinary = xmlToBinary;
 
         /// <summary>
+        /// Chunkに関するスタックの深さ(書き込み先の切り替え時に深さを引き継ぐために保持する)
+        /// </summary>
+        private int depth = 0;
+
+        /// <summary>
         /// 処理単位のデータを書き込む
         /// </summary>
         /// <param name="cnt">0以上のときはループ終端時の書き込み契機によるループカウント</param>
@@ -35,19 +40,29 @@ namespace CsvToBinary.Data
         /// <summary>
         /// 書き込んだChunkをスタックにPushする
         /// </summary>
-        public void Push() { }
+        public void Push()
+        {
+            ++this.depth;
+        }
 
         /// <summary>
         /// 書き込んだChunkをスタックからPopする
         /// </summary>
-        public void Pop() { }
+        public void Pop()
+        {
+            if (this.depth == 0)
+            {
+                throw new InvalidOperationException("スタックが空です");
+            }
+            --this.depth;
+        }
 
         /// <summary>
         /// Chunkに関するスタックの深さの取得
         /// </summary>
         public int Depth()
         {
-            return 0;
+            return this.depth;
         }
 
         /// <summary>

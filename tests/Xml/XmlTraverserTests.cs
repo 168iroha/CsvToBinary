@@ -923,6 +923,73 @@ namespace tests.Xml
         }
 
         [TestMethod]
+        public void StringWriterから別の書き込み先へ切り替えてもスタックの深さが引き継がれることの確認()
+        {
+            var name1 = "name1";
+            var item1 = "あ";
+            var item2 = "い";
+            // データの構築のためのXMLの定義
+            // ループ内のwriter要素で書き込み先をStringWriterからBinaryWriterへ切り替える
+            var xmlTree = new XDocument(
+                new XElement("format",
+                    new XElement(
+                        "repeat",
+                        new XAttribute("fetch", "true"),
+                        new XElement(
+                            "writer",
+                            new XAttribute("type", "binary-file"),
+                            new XElement(
+                                "item",
+                                new XAttribute("name", "出力先"),
+                                new XElement("default-value", "out")
+                            )
+                        ),
+                        new XElement(
+                            "item",
+                            new XAttribute("name", name1)
+                        )
+                    )
+                )
+            );
+            var reader = new StubDataReader(
+                [name1],
+                [[item1], [item2]]
+            );
+            // 読み込み可能な状態にしておく
+            reader.ReadChunk();
+
+            var xmlToBinary = new StubXmlToBinary();
+            var xmlTraverser = new XmlTraverser(
+                new StubXPathResolver(),
+                xmlToBinary,
+                path => new XDocument(),
+                (type, name, xmlToBinary) => new CsvToBinary.Data.BinaryWriter(new MemoryStream(), xmlToBinary),
+                []
+            );
+
+            using var stringWriter = new StringWriter(new MemoryStream(), xmlToBinary);
+
+            // 深さが不整合だとスタックが空の例外が発生するはず
+            var writers = xmlTraverser.Traversal(stringWriter, (reader, new XmlDocumentWithPath(xmlTree, "")), []).ToArray();
+            try
+            {
+                // 初期の書き込み先 + 各レコードに対する書き込み先
+                Assert.AreEqual(3, writers.Length);
+                Assert.AreSame(stringWriter, writers[0]);
+                // 切り替え後の書き込み先のスタックが全て解放されている
+                Assert.AreEqual(0, writers[^1].Depth());
+                Assert.AreEqual(0, stringWriter.Depth());
+            }
+            finally
+            {
+                foreach (var w in writers.Skip(1))
+                {
+                    w.Dispose();
+                }
+            }
+        }
+
+        [TestMethod]
         public void 複数回のTraversal呼び出しでunrollingが正しく動作することの確認()
         {
             var itemsName1 = "items1";
