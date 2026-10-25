@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <!-- //item/valueや//item/default-valueの@typeの設定値 -->
   <xs:attributeGroup name="value-type-attr-group">
@@ -63,6 +63,15 @@
                 <xs:enumeration value="xml"/><!-- 静的に指定されたXMLを結合する -->
                 <xs:enumeration value="dynamic"/><!-- 動的に指定されたXMLを結合する -->
                 <xs:enumeration value="combined"/><!-- 現在対象となっている結合されたXMLへ制御を移す -->
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ読み込む -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
               </xs:restriction>
             </xs:simpleType>
           </xs:attribute>
@@ -165,6 +174,15 @@
               </xs:restriction>
             </xs:simpleType>
           </xs:attribute>
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ出力する -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
 
         </xs:complexType>
       </xs:element>
@@ -210,6 +228,15 @@
           <xs:attribute name="unrolling" type="xs:boolean" />
           <!-- 繰り返しの際にレコードのフェッチを行うか -->
           <xs:attribute name="fetch" type="xs:boolean" />
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ繰り返す -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
         </xs:complexType>
       </xs:element>
     </xs:choice>
@@ -268,6 +295,15 @@
           </xs:choice>
           <!-- グループ名 -->
           <xs:attribute name="name" type="xs:string" />
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ出力する -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
         </xs:complexType>
       </xs:element>
       <!-- 出力の基本要素 -->
