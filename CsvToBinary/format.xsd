@@ -66,6 +66,15 @@
               </xs:restriction>
             </xs:simpleType>
           </xs:attribute>
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ読み込む -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
         </xs:complexType>
       </xs:element>
 
@@ -165,6 +174,15 @@
               </xs:restriction>
             </xs:simpleType>
           </xs:attribute>
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ出力する -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
 
         </xs:complexType>
       </xs:element>
@@ -210,6 +228,15 @@
           <xs:attribute name="unrolling" type="xs:boolean" />
           <!-- 繰り返しの際にレコードのフェッチを行うか -->
           <xs:attribute name="fetch" type="xs:boolean" />
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ繰り返す -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
         </xs:complexType>
       </xs:element>
     </xs:choice>
@@ -230,6 +257,7 @@
               <xs:restriction base="xs:string">
                 <!-- 書き込み先リスト -->
                 <xs:enumeration value="binary-file"/><!-- バイナリファイル -->
+                <xs:enumeration value="csv-file"/><!-- CSVファイル -->
               </xs:restriction>
             </xs:simpleType>
           </xs:attribute>
@@ -267,6 +295,15 @@
           </xs:choice>
           <!-- グループ名 -->
           <xs:attribute name="name" type="xs:string" />
+          <!-- 書き込み先がwriterのtypeに一致する場合にのみ出力する -->
+          <xs:attribute name="if-output">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="binary-file"/>
+                <xs:enumeration value="csv-file"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
         </xs:complexType>
       </xs:element>
       <!-- 出力の基本要素 -->

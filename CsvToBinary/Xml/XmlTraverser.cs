@@ -474,6 +474,18 @@ namespace CsvToBinary.Xml
         }
 
         /// <summary>
+        /// 要素が現在の書き込み先に対する出力対象であるかの判定
+        /// </summary>
+        /// <param name="element">判定対象の要素</param>
+        /// <param name="writerType">現在の書き込み先を指定したときのtypeの値(writer要素を介していない場合はnull)</param>
+        /// <returns>if-outputの指定がない、あるいはwriterTypeと一致する場合にtrue</returns>
+        private static bool IsOutputTarget(XElement element, string? writerType)
+        {
+            var ifOutput = element.Attribute("if-output")?.Value;
+            return ifOutput is null || ifOutput == writerType;
+        }
+
+        /// <summary>
         /// elementを示すキーの取得
         /// </summary>
         /// <param name="key">elementの位置を示すキー</param>
@@ -622,7 +634,10 @@ namespace CsvToBinary.Xml
 
                 // importNodeをtargetDocのXMLに置換する(import[@name='xxx']をitems[@name='xxx']に丸ごと入れ替える)
                 this.EditXml(importNode, targetDoc, relative);
+                var ifOutput = importNode.Attribute("if-output")?.Value;
                 importNode.ReplaceAll(new XAttribute("name", name), targetDoc.Document.Root!.Elements());
+                // itemsへ置換してもif-outputは引き継ぐ
+                importNode.SetAttributeValue("if-output", ifOutput);
                 importNode.Name = "items";
             }
         }
@@ -727,7 +742,8 @@ namespace CsvToBinary.Xml
         /// <param name="relative">読み込み元となるパス</param>
         /// <param name="combinedXml">現在解析対象となっている結合されるXml</param>
         /// <param name="scanStack">探索のための</param>
-        private IEnumerable<IDataWriter> TraversalImportNode(IDataReader? reader, IDataWriter writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack)
+        /// <param name="writerType">writerを指定したときのtypeの値</param>
+        private IEnumerable<IDataWriter> TraversalImportNode(IDataReader? reader, IDataWriter writer, XElement element, string relative, CombinedXml combinedXml, Stack<(string, XElement)> scanStack, string? writerType)
         {
             var type = element.Attribute("type")?.Value;
 
@@ -738,7 +754,7 @@ namespace CsvToBinary.Xml
                     // 結合されたXMLの解析へ制御を移す
                     var current = combinedXml.Current() ?? throw new XmlFormatException("結合されるXMLを走査していない状態でimport/[@type='combined']を解析しようとしています", element);
                     this.EditXml(element, current.Item2, relative);
-                    return this.Traversal(writer, current, []);
+                    return this.Traversal(writer, current, [], writerType: writerType);
                 case "dynamic":
                     // 制御を移さずに読み込む
                     var targetDoc = this.ImportXml(element, relative);
@@ -748,7 +764,7 @@ namespace CsvToBinary.Xml
                         // XMLのimportの解決は実施せず、毎回importを評価する
                         // importしたXML内のimportの解決はする
                         this.EditXml(element, targetDoc, relative);
-                        return this.Traversal(writer, (reader, targetDoc), []);
+                        return this.Traversal(writer, (reader, targetDoc), [], writerType: writerType);
                     }
                     break;
                 case "none":
@@ -810,7 +826,8 @@ namespace CsvToBinary.Xml
         /// <param name="entry">トラバーサルのエントリポイントとなるXML</param>
         /// <param name="combined">entryに対して逐次結合されるXML</param>
         /// <param name="globalKey">entryの位置を示すキー</param>
-        public IEnumerable<IDataWriter> Traversal(IDataWriter writer, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined, string globalKey = "")
+        /// <param name="writerType">writerを指定したときのtypeの値(引数に指定されたwriterなどwriter要素を介さない場合はnull)</param>
+        public IEnumerable<IDataWriter> Traversal(IDataWriter writer, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined, string globalKey = "", string? writerType = null)
         {
             var root = entry.Item2.Document.Root;
             // 書き込み終了の通知が必要でないかを示すフラグ
@@ -849,10 +866,10 @@ namespace CsvToBinary.Xml
                         // siblingに対してタグによる分岐の実施
                         switch (sibling.Name.LocalName)
                         {
-                            case "item":
+                            case "item" when IsOutputTarget(sibling, writerType):
                                 TraversalItemNode(writer, reader, key, sibling, combinedXml);
                                 break;
-                            case "items":
+                            case "items" when IsOutputTarget(sibling, writerType):
                                 TraversalItemsNode(key, sibling, scanStack);
                                 break;
                             case "writer":
@@ -866,6 +883,7 @@ namespace CsvToBinary.Xml
                                 // 引数に指定されたwriteの場合は複数回Disposeが呼び出される
                                 yield return writer;
                                 this.TraversalWriteNode(out writer, reader, sibling, combinedXml);
+                                writerType = sibling.Attribute("type")?.Value;
                                 noEndtoWriting = false;
                                 // 書き込み開始のために深さの数だけスタックにpushする
                                 writer.Push();
@@ -875,18 +893,21 @@ namespace CsvToBinary.Xml
                                     writer.WriteChunk(0);
                                 }
                                 break;
-                            case "import":
-                                foreach (var ret in this.TraversalImportNode(reader, writer, sibling, entry.Item2.Path, combinedXml, scanStack))
+                            case "import" when IsOutputTarget(sibling, writerType):
+                                foreach (var ret in this.TraversalImportNode(reader, writer, sibling, entry.Item2.Path, combinedXml, scanStack, writerType))
                                 {
                                     yield return ret;
                                 }
                                 break;
-                            case "repeat":
+                            case "repeat" when IsOutputTarget(sibling, writerType):
                                 if (this.TraversalRepeatNode(reader, key, sibling, combinedXml, scanStack, repeatStack))
                                 {
                                     // 初回のループの評価のスコープを与えるためにスタックする
                                     writer.Push();
                                 }
+                                break;
+                            case "item" or "items" or "import" or "repeat":
+                                // if-outputが現在の書き込み先の型と一致しない場合はスキップ
                                 break;
                             case "nop":
                                 break;

@@ -37,7 +37,16 @@ namespace tests.Xml
             // 少なくともfromとは異なる文字列を返す
             return string.IsNullOrEmpty(from) ? "empty" : from + from;
         }
+
+        public string InverseTransform(string to)
+        {
+            return string.IsNullOrEmpty(to) ? "empty" : to + to;
+        }
     }
+
+    /// <summary>
+    /// ITransformerControlについてのスタブ
+    /// </summary>
     public class StubTransformerControl : ITransformerControl
     {
         /// <summary>

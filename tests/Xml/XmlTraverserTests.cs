@@ -230,6 +230,11 @@ namespace tests.Xml
         private readonly IXmlToBinary xmlToBinary = xmlToBinary;
 
         /// <summary>
+        /// Push/Popに対応するスコープが行のスタックに反映済みかのリスト(末尾が最も内側)
+        /// </summary>
+        private readonly List<bool> realized = [];
+
+        /// <summary>
         /// pushやpopにおけるネストの深さ
         /// </summary>
         private int nestLevel = 0;
@@ -267,6 +272,18 @@ namespace tests.Xml
 
         public void Pop()
         {
+            // 行のスタックに反映されていないスコープ(import先のTraversalの開始時のPushなど)のPopでは行を破棄しない
+            if (this.realized.Count > 0)
+            {
+                var last = this.realized.Count - 1;
+                var wasRealized = this.realized[last];
+                this.realized.RemoveAt(last);
+                if (!wasRealized)
+                {
+                    return;
+                }
+            }
+
             // 書き込み可能データをマージする
             // this.nestLevel - 1の深さはPop後も継続して書き込まれるため
             // そこへはマージしないようにする
@@ -292,20 +309,32 @@ namespace tests.Xml
 
         public void Push()
         {
-            // 書き込み可能な状態にする場合に限り実行
+            // 書き込み可能な状態にする場合に限り行のスタックへ反映する
             if (this.nestLevel == 0)
             {
                 ++this.nestLevel;
                 this.stack.Push([]);
+                this.realized.Add(true);
+            }
+            else
+            {
+                this.realized.Add(false);
             }
         }
 
         public void WriteChunk(int cnt)
         {
+            // 行のスタックに反映されていないスコープの終端では行を出力しない(import先のTraversalの終了時など)
+            if (cnt < 0 && this.realized.Count > 0 && !this.realized[^1])
+            {
+                return;
+            }
+
             if (this.stack.TryPeek(out List<string>? peek))
             {
                 List<List<string>> targetArray;
-                if (cnt != 0)
+                // 初回のループの終端として扱うのはPushされたが行のスタックに反映されていないスコープが存在するときのみ
+                if (cnt != 0 || !this.realized.Contains(false))
                 {
                     if (this.nestLevel > 1)
                     {
@@ -314,7 +343,7 @@ namespace tests.Xml
                         if (size < this.nestLevel - 1)
                         {
                             // 書き込み可能だがまだ書き込んでいないデータの配列サイズが不足しているときは拡張
-                            this.tempDataArray.AddRange(Enumerable.Repeat<List<List<string>>>([], this.nestLevel - 1 - size));
+                            this.tempDataArray.AddRange(Enumerable.Range(0, this.nestLevel - 1 - size).Select(_ => new List<List<string>>()));
                         }
                         targetArray = this.tempDataArray[this.nestLevel - 2];
                     }
@@ -323,7 +352,11 @@ namespace tests.Xml
                         // ネストが最低限の場合は直接書き出す
                         targetArray = this.dataArray;
                     }
-                    targetArray.Add(peek);
+                    // 何も書き込まれていない行は出力しない(writer要素による書き込み先の切り替え後に生じる)
+                    if (peek.Count > 0)
+                    {
+                        targetArray.Add(peek);
+                    }
 
                     // this.tempDataArrayのより深いところへの書き込みをマージする
                     for (int i = this.nestLevel - 1; i < this.tempDataArray.Count; ++i)
@@ -341,7 +374,8 @@ namespace tests.Xml
                 }
                 else
                 {
-                    // 初回のループ時はの書き込みはループ前のものと統合するためこのタイミングでスタックする
+                    // 初回のループ時の書き込みはループ前のものと統合するためこのタイミングでスタックする(ループの開始時のPushに対応する最も内側のスコープを反映する)
+                    this.realized[this.realized.LastIndexOf(false)] = true;
                     ++this.nestLevel;
                     this.stack.Push([]);
                 }
@@ -353,7 +387,7 @@ namespace tests.Xml
         /// </summary>
         public int Depth()
         {
-            return this.nestLevel;
+            return this.realized.Count;
         }
 
         /// <summary>
@@ -988,6 +1022,7 @@ namespace tests.Xml
                 }
             }
         }
+
 
         [TestMethod]
         public void 複数回のTraversal呼び出しでunrollingが正しく動作することの確認()

@@ -202,6 +202,14 @@ namespace CsvToBinary.BuiltIn
         /// </summary>
         private readonly List<IRegexCharaMap> regexMap = [];
         /// <summary>
+        /// 固定文字列の変換規則の宣言順のリスト
+        /// </summary>
+        private readonly List<(string From, ICharaMap Map)> declaredMaps = [];
+        /// <summary>
+        /// 逆変換規則の定義(変換先の文字列の長さごとの変換先と変換元の対応でListの若いインデックスに文字列の大きい対象が格納される)
+        /// </summary>
+        private List<(int, Dictionary<string, string>)>? inverseMap = null;
+        /// <summary>
         /// 変換結果のテキストを読み込むための関数
         /// </summary>
         private readonly Func<string, Encoding?, string> stringFunc;
@@ -249,12 +257,9 @@ namespace CsvToBinary.BuiltIn
                         dict.Add(length, map);
                     }
                     // 単純な文字列による変換の定義
-                    map.Add(
-                        from,
-                        toAttr is not null ?
-                        new CharaMap(toAttr.Value) :
-                        new CharaMapFromFile(toFileAttr!.Value, encoding, this)
-                    ); 
+                    ICharaMap charaMap = toAttr is not null ? new CharaMap(toAttr.Value) : new CharaMapFromFile(toFileAttr!.Value, encoding, this);
+                    map.Add(from, charaMap);
+                    this.declaredMaps.Add((from, charaMap));
                 }
                 else if (fromRegexAttr is not null)
                 {
@@ -269,6 +274,7 @@ namespace CsvToBinary.BuiltIn
                 }
             }
             // 変換テーブルへの代入
+            //this.longestMap = [.. dict.Reverse().Select(pair => (pair.Key, pair.Value))];
             foreach (var pair in dict.Reverse())
             {
                 this.longestMap.Add((pair.Key, pair.Value));
@@ -344,6 +350,50 @@ namespace CsvToBinary.BuiltIn
                 }
             }
 
+            return result;
+        }
+
+        /// <summary>
+        /// 文字列を逆変換する
+        /// </summary>
+        /// <param name="to">Transformによる変換結果の文字列</param>
+        /// <returns>逆変換結果の文字列</returns>
+        public string InverseTransform(string to)
+        {
+            // ファイル読み込みを評価タイミングまで遅延するためにこのタイミングで初期化
+            this.inverseMap ??= [.. declaredMaps
+                .Select(declared => (declared.From, To: declared.Map.Get()))
+                // 空文字列への変換の逆変換は実施しない
+                .Where(pair => pair.To.Length > 0)
+                // ロンゲストマッチで照合する
+                .GroupBy(pair => pair.To.Length).OrderByDescending(group => group.Key)
+                // 同じ変換先が複数存在するときは最初に宣言された変換元を採用する
+                .Select(group => (group.Key, group.GroupBy(pair => pair.To).ToDictionary(g => g.Key, g => g.First().From)))
+            ];
+
+            var result = "";
+            int pos = 0;
+
+            while (pos < to.Length)
+            {
+                bool match = false;
+                // ロンゲストマッチを行って得られた規則から逆変換を試みる
+                foreach (var (length, map) in this.inverseMap)
+                {
+                    if (length <= to.Length - pos && map.TryGetValue(to.Substring(pos, length), out var value))
+                    {
+                        pos += length;
+                        result += value;
+                        match = true;
+                        break;
+                    }
+                }
+                // 正規表現によるマッチングは一般に逆変換が困難であるため未実装
+                if (!match)
+                {
+                    throw new TransformException("文字列に関する逆変換規則が見つかりませんでした", pos, to);
+                }
+            }
             return result;
         }
     }

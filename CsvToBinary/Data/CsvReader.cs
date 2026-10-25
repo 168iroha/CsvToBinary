@@ -124,7 +124,6 @@ namespace CsvToBinary.Data
         /// <summary>
         /// 現在のCSVの読み込み状態のコンテキストをPopする
         /// </summary>
-        /// <returns>Popする前のPeekの要素</returns>
         public void Pop()
         {
             this.stack.Pop();

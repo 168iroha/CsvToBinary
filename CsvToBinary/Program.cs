@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using System.Text;
+using System.Xml.Linq;
 using CsvToBinary.BuiltIn;
 using CsvToBinary.Data;
 using CsvToBinary.Xml;
@@ -10,8 +11,9 @@ class Program
     /// </summary>
     /// <param name="args">コマンドライン引数</param>
     /// <returns></returns>
-    static public (Dictionary<string, string> externalDic, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined) ParseCommandLine(string[] args)
+    static public (Dictionary<string, string> externalDic, (IDataReader?, XmlDocumentWithPath) entry, List<(IDataReader?, XmlDocumentWithPath)> combined) ParseCommandLine(string[] args, IXPathResolver xPathResolver, ITransformerControl transformerControl, out string outEncoding)
     {
+        outEncoding = Encoding.UTF8.BodyName;
         (IDataReader?, XmlDocumentWithPath)? entry = null;
         List<(IDataReader?, XmlDocumentWithPath)> combined = [];
         IDataReader? inputFile = null;
@@ -52,18 +54,26 @@ class Program
                     ++i;
                     inputFile = new CsvReader(new StreamReader(args[i]));
                     break;
-                //case "-bin":
-                //    if (inputFile is not null)
-                //    {
-                //        throw new ArgumentException($"[{args[i - 1]}]の次に来る引数に-binを指定することはできません");
-                //    }
-                //    if (i + 1 >= args.Length)
-                //    {
-                //        throw new ArgumentException("ファイル名の入力がありません");
-                //    }
-                //    ++i;
-                //    inputFile = new CsvReader(new StreamReader(args[i]));
-                //    break;
+                case "-bin":
+                    if (inputFile is not null)
+                    {
+                        throw new ArgumentException($"[{args[i - 1]}]の次に来る引数に-binを指定することはできません");
+                    }
+                    if (i + 1 >= args.Length)
+                    {
+                        throw new ArgumentException("ファイル名の入力がありません");
+                    }
+                    ++i;
+                    inputFile = new CsvToBinary.Data.BinaryReader(new FileStream(args[i], FileMode.Open, FileAccess.Read, FileShare.Read), xPathResolver, transformerControl, externalDic);
+                    break;
+                case "-out-encoding":
+                    // CSV出力のエンコーディング(format.xsdのencodingに準拠)
+                    if (i + 1 >= args.Length)
+                    {
+                        throw new ArgumentException("エンコーディングの入力がありません");
+                    }
+                    outEncoding = args[++i];
+                    break;
                 case "-g":
                     // 外部パラメータ
                     if (i + 2 >= args.Length)
@@ -127,10 +137,6 @@ class Program
 
         try
         {
-            // コマンドライン引数の解析
-            var (externalDic, entry, combined) = ParseCommandLine(args);
-
-            // XPathの解決を行うオブジェクトの用意
             var xparhResolver = new XPathResolver();
             // 変換器の定義
             var transformControl = new TransformerControl(
@@ -167,6 +173,8 @@ class Program
                     }
                 }
             );
+            // コマンドライン引数の解析
+            var (externalDic, entry, combined) = ParseCommandLine(args, xparhResolver, transformControl, out var outEncoding);
             // カウンタの定義
             var counterPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "counter.xml");
             if (!File.Exists(counterPath))
@@ -207,6 +215,8 @@ class Program
                         {
                             // バイナリファイルへの出力
                             "binary-file" => new CsvToBinary.Data.BinaryWriter(new FileStream(name, FileMode.Create, FileAccess.ReadWrite, FileShare.None), xmlToBinary),
+                            // CSVファイルへの出力
+                            "csv-file" => new CsvToBinary.Data.CsvWriter(new StreamWriter(new FileStream(name, FileMode.Create, FileAccess.Write, FileShare.None), CharaTransformer.GetEncoding(outEncoding))),
                             _ => throw new InputDataException($"型[{type}]に対応する出力先は存在しません", null)
                         };
                     }
