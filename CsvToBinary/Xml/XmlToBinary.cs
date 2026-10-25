@@ -17,7 +17,7 @@ namespace CsvToBinary.Xml
         /// <summary>
         /// パディングの方向の定義
         /// </summary>
-        private enum PaddingDirection
+        internal enum PaddingDirection
         {
             Left, Right
         }
@@ -87,7 +87,7 @@ namespace CsvToBinary.Xml
         /// XMLノードから文字列へに変換する
         /// </summary>
         /// <param name="element">変換対象のXMLのノード</param>
-        /// <param name="p">elementの親ノード</param>
+        /// <param name="parent">elementの親ノード</param>
         /// <returns>変換結果の文字列</returns>
         private string ValueNodeEvaluate(XElement element, XElement parent)
         {
@@ -206,7 +206,7 @@ namespace CsvToBinary.Xml
         /// </summary>
         /// <param name="element">パディング情報が記載されたノード</param>
         /// <returns>パディング情報</returns>
-        private static (PaddingDirection direction, string padding) GetPadding(XElement element)
+        internal static (PaddingDirection direction, string padding) GetPadding(XElement element)
         {
             var padding = element.Attribute("padding")?.Value;
             if (padding is null)

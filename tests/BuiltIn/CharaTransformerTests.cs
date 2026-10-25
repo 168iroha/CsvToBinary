@@ -1,4 +1,4 @@
-using CsvToBinary.BuiltIn;
+﻿using CsvToBinary.BuiltIn;
 using System.Xml.Linq;
 
 namespace tests.BuiltIn
@@ -290,5 +290,122 @@ namespace tests.BuiltIn
             }
             catch (TransformException) { }
         }
+
+        private static XElement Map(string from, string to)
+        {
+            return new XElement("map", new XAttribute("from", from), new XAttribute("to", to));
+        }
+
+        [TestMethod]
+        public void 固定文字列による逆変換()
+        {
+            var xmlTree = new XDocument(new XElement("transform",
+                new XElement("map",
+                    new XAttribute("from", "あ"),
+                    new XAttribute("to", "か")
+                ),
+                new XElement("map",
+                    new XAttribute("from", "い"),
+                    new XAttribute("to", "き")
+                ),
+                new XElement("map",
+                    new XAttribute("from", "う"),
+                    new XAttribute("to", "く")
+                )
+            ));
+            var transformer = new CharaTransformer(xmlTree, (x, y) => "");
+
+            Assert.AreEqual("あいう", transformer.InverseTransform("かきく"));
+            Assert.AreEqual("うあ", transformer.InverseTransform(transformer.Transform("うあ")));
+        }
+
+        [TestMethod]
+        public void ファイルからの変換の逆変換()
+        {
+            var xmlTree = new XDocument(new XElement("transform",
+                new XElement("map",
+                    new XAttribute("from", "あ"),
+                    new XAttribute("to-file", "a.txt")
+                ),
+                new XElement("map",
+                    new XAttribute("from", "い"),
+                    new XAttribute("to", "き")
+                )
+            ));
+            var transformer = new CharaTransformer(xmlTree, (path, encoding) => path.EndsWith("a.txt") ? "ABC" : "");
+
+            Assert.AreEqual("あいあ", transformer.InverseTransform("ABCきABC"));
+        }
+
+        [TestMethod]
+        public void 長さの異なる変換先のロンゲストマッチによる逆変換()
+        {
+            var xmlTree = new XDocument(new XElement("transform",
+                new XElement("map",
+                    new XAttribute("from", "あ"),
+                    new XAttribute("to", "ab")
+                ),
+                new XElement("map",
+                    new XAttribute("from", "い"),
+                    new XAttribute("to", "abc")
+                ),
+                new XElement("map",
+                    new XAttribute("from", "う"),
+                    new XAttribute("to", "c")
+                )
+            ));
+            var transformer = new CharaTransformer(xmlTree, (x, y) => "");
+
+            Assert.AreEqual("abc", transformer.Transform("あう"));
+            Assert.AreEqual("い", transformer.InverseTransform("abc"));
+        }
+
+        [TestMethod]
+        public void 変換先が重複する場合は最初に宣言された変換元に逆変換される()
+        {
+            var duplicated = new CharaTransformer(new XDocument(new XElement("transform",
+                new XElement("map",
+                    new XAttribute("from", "い"),
+                    new XAttribute("to", "x")
+                ),
+                new XElement("map",
+                    new XAttribute("from", "あ"),
+                    new XAttribute("to", "x")
+                ),
+                new XElement("map",
+                    new XAttribute("from", "う"),
+                    new XAttribute("to", "y")
+                )
+            )), (x, y) => "");
+            Assert.AreEqual("いう", duplicated.InverseTransform("xy"));
+
+            // 宣言順を入れ替えると結果も入れ替わる
+            var reversed = new CharaTransformer(new XDocument(new XElement("transform",
+                Map("あ", "x"), Map("い", "x")
+            )), (x, y) => "");
+            Assert.AreEqual("あ", reversed.InverseTransform("x"));
+        }
+
+        [TestMethod]
+        public void 空文字列への変換は逆変換できない()
+        {
+            // 空文字列への変換
+            var empty = new CharaTransformer(new XDocument(new XElement("transform",
+                Map("あ", "x"), Map("い", "")
+            )), (x, y) => "");
+            Assert.ThrowsException<TransformException>(() => empty.InverseTransform("xy"));
+        }
+
+        [TestMethod]
+        public void 正規表現による変換の結果は逆変換できない()
+        {
+            var transformer = new CharaTransformer(new XDocument(new XElement("transform",
+                new XElement("map", new XAttribute("from-regex", "[0-9]"), new XAttribute("to", "#"))
+            )), (x, y) => "");
+
+            Assert.AreEqual("#", transformer.Transform("1"));
+            Assert.ThrowsException<TransformException>(() => transformer.InverseTransform("#"));
+        }
+
     }
 }

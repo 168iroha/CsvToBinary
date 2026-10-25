@@ -69,7 +69,6 @@ namespace CsvToBinary.Data
         /// </summary>
         /// <param name="key">itemの親までの項目に関するキー</param>
         /// <param name="item">設定対象のデータの記述子</param>
-        /// <returns>取得したデータ</returns>
         public void SetData(string key, XElement item)
         {
             var offset = this.stream.Position;

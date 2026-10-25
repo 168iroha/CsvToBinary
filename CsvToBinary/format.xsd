@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <!-- //item/valueや//item/default-valueの@typeの設定値 -->
   <xs:attributeGroup name="value-type-attr-group">
@@ -230,6 +230,7 @@
               <xs:restriction base="xs:string">
                 <!-- 書き込み先リスト -->
                 <xs:enumeration value="binary-file"/><!-- バイナリファイル -->
+                <xs:enumeration value="csv-file"/><!-- CSVファイル -->
               </xs:restriction>
             </xs:simpleType>
           </xs:attribute>
